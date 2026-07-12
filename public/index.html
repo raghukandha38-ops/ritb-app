@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <style>
   :root{
     --ink-900:#101826;
@@ -89,6 +90,27 @@
   th{background:#E7E0CB;color:var(--text-mute);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;}
   tr:last-child td{border-bottom:none;}
   .empty{color:var(--text-mute);font-size:13px;padding:18px;text-align:center;}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;}
+  .badge{background:var(--bg-accent,#EEF3EC);background:#EEF3EC;border:1px solid var(--moss);color:var(--moss-dark);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;}
+  .badge.gold{background:#FBF1DC;border-color:var(--brass);color:var(--brass-dark);}
+  .leader-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--paper-2);}
+  .leader-row:first-child{border-radius:10px 10px 0 0;}
+  .leader-row:last-child{border-bottom:none;border-radius:0 0 10px 10px;}
+  .leader-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+  .leader-rank{font-family:'Fraunces',serif;font-size:16px;width:24px;color:var(--text-mute);}
+  .leader-rank.top{color:var(--brass-dark);}
+  .leader-name{flex:1;font-size:14px;}
+  .leader-name .cls{color:var(--text-mute);font-size:12px;display:block;}
+  .leader-pages{font-size:14px;font-weight:600;color:var(--ink-700);}
+  .my-rank{font-size:13px;color:var(--text-mute);margin:0 0 24px;}
+  .progress-card{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+  .progress-card .pc-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .progress-card .pc-title{font-weight:600;font-size:14px;}
+  .progress-card .pc-author{color:var(--text-mute);font-size:12px;}
+  .progress-bar-track{background:#E7E0CB;border-radius:999px;height:8px;overflow:hidden;}
+  .progress-bar-fill{background:var(--moss);height:100%;border-radius:999px;}
+  .progress-card .pc-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-mute);margin-top:6px;}
+  .progress-card .pc-continue{margin-top:10px;}
   .reader{display:none;min-height:100vh;background:var(--ink-900);}
   .reader.show{display:block;}
   .reader-top{background:var(--ink-700);color:var(--paper-2);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
@@ -173,6 +195,10 @@
             <div class="role-opt selected" id="roleStudent" onclick="pickRole('student')">Student</div>
             <div class="role-opt" id="roleAdmin" onclick="pickRole('admin')">Faculty / Admin</div>
           </div>
+          <div id="adminCodeField" style="display:none;">
+            <label for="suAdminCode">Admin invite code</label>
+            <input type="text" id="suAdminCode" placeholder="Provided by your site administrator">
+          </div>
           <label for="suPassword">Password</label>
           <input type="password" id="suPassword" placeholder="At least 6 characters">
           <label for="suConfirm">Confirm password</label>
@@ -196,6 +222,15 @@
       <div class="stat"><div class="num" id="stuTotalPages">0</div><div class="lbl">Pages logged</div></div>
       <div class="stat"><div class="num" id="stuTotalSessions">0</div><div class="lbl">Reading sessions</div></div>
     </div>
+    <div class="badges" id="stuBadges"></div>
+    <p class="section-title">Currently reading</p>
+    <div id="currentlyReadingWrap"></div>
+    <p class="section-title">Reading over the last 14 days</p>
+    <div style="background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:28px;height:220px;">
+      <canvas id="readingChart"></canvas>
+    </div>
+    <p class="section-title">Leaderboard — top readers by pages</p>
+    <div id="leaderboardWrap"></div>
     <p class="section-title">Your reading log</p>
     <div id="logTableWrap"></div>
     <p class="section-title">Library</p>
@@ -214,6 +249,8 @@
       <div class="stat"><div class="num" id="admPages">0</div><div class="lbl">Total pages read</div></div>
       <div class="stat"><div class="num" id="admSessions">0</div><div class="lbl">Total sessions logged</div></div>
     </div>
+    <p class="section-title">Leaderboard — top readers by pages</p>
+    <div id="adminLeaderboardWrap"></div>
     <p class="section-title">Student roster</p>
     <div id="rosterTableWrap"></div>
     <p class="section-title">Upload a book</p>
@@ -275,6 +312,7 @@ function pickRole(role){
   selectedRole = role;
   document.getElementById('roleStudent').classList.toggle('selected', role==='student');
   document.getElementById('roleAdmin').classList.toggle('selected', role==='admin');
+  document.getElementById('adminCodeField').style.display = role==='admin' ? 'block' : 'none';
 }
 
 function showMsg(elId, text, type){
@@ -299,13 +337,14 @@ async function handleSignup(){
   const cls = document.getElementById('suClass').value.trim();
   const password = document.getElementById('suPassword').value;
   const confirm = document.getElementById('suConfirm').value;
+  const adminCode = document.getElementById('suAdminCode').value.trim();
 
   const btn = document.getElementById('signupBtn');
   btn.disabled = true; btn.textContent = 'Creating account...';
   try{
     const data = await api('/api/auth/signup', {
       method:'POST',
-      body: JSON.stringify({ name, email, cls, password, confirm, role: selectedRole })
+      body: JSON.stringify({ name, email, cls, password, confirm, role: selectedRole, adminCode })
     });
     localStorage.setItem(TOKEN_KEY, data.token);
     showMsg('signupMsg','Account created. Logging you in...','ok');
@@ -361,11 +400,14 @@ async function enterApp(user){
     document.getElementById('adminDash').classList.add('show');
     await renderAdminDash();
     await renderLibrary('adminLibraryWrap', true);
+    await renderLeaderboard('adminLeaderboardWrap');
   }else{
     document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
     document.getElementById('studentDash').classList.add('show');
     await renderStudentDash();
     await renderLibrary('studentLibraryWrap', false);
+    await renderCurrentlyReading();
+    await renderLeaderboard('leaderboardWrap');
   }
 }
 
@@ -377,13 +419,116 @@ async function renderStudentDash(){
   document.getElementById('stuTotalPages').textContent = totalPages;
   document.getElementById('stuTotalSessions').textContent = logs.length;
 
+  renderBadges(streak, totalPages);
+  renderReadingChart(logs);
+
   const wrap = document.getElementById('logTableWrap');
   if(!logs.length){
-    wrap.innerHTML = '<div class="empty">No entries yet. Log your first reading session above.</div>';
+    wrap.innerHTML = '<div class="empty">No entries yet. Read a book from the library to get started.</div>';
     return;
   }
   const rows = logs.map(l => '<tr><td>'+l.date+'</td><td>'+escapeHtml(l.book)+'</td><td>'+l.pages+'</td></tr>').join('');
   wrap.innerHTML = '<table><tr><th>Date</th><th>Book</th><th>Pages</th></tr>'+rows+'</table>';
+}
+
+const STREAK_BADGES = [
+  { days: 3, label: '3-day spark' },
+  { days: 7, label: '1-week flame' },
+  { days: 14, label: '2-week bonfire' },
+  { days: 30, label: '30-day habit' }
+];
+const PAGE_BADGES = [
+  { pages: 100, label: '100 pages' },
+  { pages: 500, label: '500 pages' },
+  { pages: 1000, label: '1000 pages' },
+  { pages: 2500, label: '2500 pages' }
+];
+
+function renderBadges(streak, totalPages){
+  const wrap = document.getElementById('stuBadges');
+  if(!wrap) return;
+  const chips = [];
+  STREAK_BADGES.forEach(b => { if(streak >= b.days) chips.push('<span class="badge">'+b.label+'</span>'); });
+  PAGE_BADGES.forEach(b => { if(totalPages >= b.pages) chips.push('<span class="badge gold">'+b.label+'</span>'); });
+  wrap.innerHTML = chips.length ? chips.join('') : '<span class="badge" style="opacity:0.6;">No badges yet — keep reading</span>';
+}
+
+let readingChartInstance = null;
+function renderReadingChart(logs){
+  const canvas = document.getElementById('readingChart');
+  if(!canvas) return;
+  const days = [];
+  const totals = {};
+  for(let i = 13; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    days.push(key);
+    totals[key] = 0;
+  }
+  logs.forEach(l => { if(totals.hasOwnProperty(l.date)) totals[l.date] += Number(l.pages||0); });
+  const labels = days.map(d => d.slice(5));
+  const data = days.map(d => totals[d]);
+
+  if(readingChartInstance) readingChartInstance.destroy();
+  readingChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Pages read', data, backgroundColor: '#B8863B' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+async function renderCurrentlyReading(){
+  const wrap = document.getElementById('currentlyReadingWrap');
+  wrap.innerHTML = '<div class="empty">Loading...</div>';
+  try{
+    const { items } = await api('/api/reading/mine');
+    if(!items.length){
+      wrap.innerHTML = '<div class="empty">Nothing in progress yet — open a book from the library below.</div>';
+      return;
+    }
+    wrap.innerHTML = items.map(it => {
+      const pct = it.totalPages > 0 ? Math.min(100, Math.round((it.maxPage / it.totalPages) * 100)) : null;
+      const meta = pct !== null
+        ? '<div class="pc-meta"><span>Page '+it.maxPage+' of '+it.totalPages+'</span><span>'+pct+'%</span></div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+pct+'%;"></div></div>'
+        : '<div class="pc-meta"><span>Page '+it.maxPage+'</span></div>';
+      return '<div class="progress-card">' +
+        '<div class="pc-top"><span class="pc-title">'+escapeHtml(it.title)+'</span><span class="pc-author">'+escapeHtml(it.author)+'</span></div>' +
+        meta +
+        '<button class="btn pc-continue" style="max-width:180px;" onclick="handleOpenBook(\''+it.bookId+'\')">Continue reading</button>' +
+        '</div>';
+    }).join('');
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load reading progress.</div>';
+  }
+}
+
+async function renderLeaderboard(wrapId){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="empty">Loading...</div>';
+  try{
+    const { top5, mine } = await api('/api/leaderboard');
+    if(!top5.length){
+      wrap.innerHTML = '<div class="empty">No reading logged yet.</div>';
+      return;
+    }
+    const rows = top5.map(r =>
+      '<div class="leader-row"><span class="leader-rank'+(r.rank<=3?' top':'')+'">#'+r.rank+'</span>' +
+      '<span class="leader-name">'+escapeHtml(r.name)+'<span class="cls">'+escapeHtml(r.cls||'')+'</span></span>' +
+      '<span class="leader-pages">'+r.pages+' pages</span></div>'
+    ).join('');
+    wrap.innerHTML = '<div class="leader-list">'+rows+'</div>';
+    if(mine && mine.rank > 5){
+      wrap.innerHTML += '<p class="my-rank">Your rank: #'+mine.rank+' — '+mine.pages+' pages, '+mine.streak+'-day streak</p>';
+    }
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load the leaderboard.</div>';
+  }
 }
 
 async function renderAdminDash(){
@@ -523,8 +668,9 @@ async function sendReadingHeartbeat(){
   const now = Date.now();
   const seconds = Math.round((now - readingLastTick)/1000);
   readingLastTick = now;
+  const totalPages = pdfDoc ? pdfDoc.numPages : 0;
   try{
-    await api('/api/reading/heartbeat', { method:'POST', body: JSON.stringify({ bookId: pdfBookId, currentPage: pdfPageNum, seconds }) });
+    await api('/api/reading/heartbeat', { method:'POST', body: JSON.stringify({ bookId: pdfBookId, currentPage: pdfPageNum, totalPages, seconds }) });
   }catch(e){}
 }
 
@@ -537,6 +683,8 @@ async function closeReader(){
   document.getElementById('readerView').classList.remove('show');
   if(currentUser.role === 'student'){
     await renderStudentDash();
+    await renderCurrentlyReading();
+    await renderLeaderboard('leaderboardWrap');
   }
 }
 
