@@ -105,6 +105,40 @@ No camera, microphone, or any device sensor is used — tracking is limited to
 which page is open and whether the browser tab is visible and focused, the
 same way any e-reader tracks reading progress.
 
+## Making reading engaging (gamification)
+
+**Badges** — students automatically earn badges for streaks (3, 7, 14, 30 days)
+and page milestones (100, 500, 1000, 2500 pages). These show up right on the
+student dashboard as they're earned, no admin setup needed.
+
+**Leaderboard** — top 5 students by total pages read, visible to everyone
+(students and admins). If a student isn't in the top 5, they still see their
+own rank below the list, so there's always something to see.
+
+**Currently reading** — a card per book-in-progress with a visual progress
+bar (page X of Y, percent complete) and a "Continue reading" button that
+drops them right back into the in-app reader at their last page.
+
+**Reading chart** — a 14-day bar chart on the student dashboard showing pages
+read per day, so progress (and gaps) are easy to see at a glance.
+
+## Locking down Faculty/Admin sign-ups
+
+By default, anyone could sign up choosing "Faculty/Admin" from the same
+screen students use. That's now locked behind an invite code.
+
+**To turn it on**, add one more environment variable on Render (same place
+you added `MONGODB_URI` and `JWT_SECRET`):
+
+- `ADMIN_INVITE_CODE` = any word or phrase you choose, e.g. `RITB-Faculty-2026`
+
+Only share this code with actual faculty/admin staff. Anyone signing up as
+Faculty/Admin without it (or with the wrong code) will be rejected. Students
+signing up as Students are unaffected — no code needed for them.
+
+If you don't set this variable at all, Faculty/Admin sign-up is disabled
+entirely (safer default) until you add it.
+
 ## Notes and limits
 
 - **Free Render tier sleeps** after 15 minutes of no traffic, so the first

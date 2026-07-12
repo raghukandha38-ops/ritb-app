@@ -107,6 +107,15 @@ app.post('/api/auth/signup', async (req, res) => {
     if (password !== confirm) {
       return res.status(400).json({ error: "Passwords don't match." });
     }
+    if (role === 'admin') {
+      const inviteCode = process.env.ADMIN_INVITE_CODE;
+      if (!inviteCode) {
+        return res.status(403).json({ error: 'Faculty/Admin sign-up is not open right now. Contact your site administrator.' });
+      }
+      if ((req.body.adminCode || '').trim() !== inviteCode) {
+        return res.status(403).json({ error: 'Incorrect admin invite code.' });
+      }
+    }
 
     const existing = await User.findOne({ email });
     if (existing) {
@@ -169,19 +178,14 @@ app.post('/api/logs', authMiddleware, async (req, res) => {
   res.json({ log });
 });
 
-app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
+async function computeStudentStats() {
   const students = await User.find({ role: 'student' });
-  const results = [];
-  let totalPages = 0;
-  let totalSessions = 0;
   const today = new Date().toISOString().slice(0, 10);
+  const results = [];
 
   for (const s of students) {
     const logs = await Log.find({ userEmail: s.email });
     const pages = logs.reduce((sum, l) => sum + l.pages, 0);
-    totalPages += pages;
-    totalSessions += logs.length;
-
     const progresses = await Progress.find({ userEmail: s.email });
     const readingMinutes = progresses.reduce((sum, p) => sum + p.minutesReading, 0);
     const activity = await ActivityDay.findOne({ userEmail: s.email, date: today });
@@ -199,7 +203,27 @@ app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
   }
 
   results.sort((a, b) => b.pages - a.pages);
-  res.json({ students: results, totalStudents: students.length, totalPages, totalSessions });
+  return results;
+}
+
+app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
+  const stats = await computeStudentStats();
+  const totalPages = stats.reduce((sum, s) => sum + s.pages, 0);
+  const totalSessions = stats.reduce((sum, s) => sum + s.sessions, 0);
+  res.json({ students: stats, totalStudents: stats.length, totalPages, totalSessions });
+});
+
+app.get('/api/leaderboard', authMiddleware, async (req, res) => {
+  const stats = await computeStudentStats();
+  const top5 = stats.slice(0, 5).map((s, i) => ({
+    rank: i + 1, name: s.name, cls: s.cls, pages: s.pages, streak: s.streak
+  }));
+  let mine = null;
+  if (req.user.role === 'student') {
+    const idx = stats.findIndex(s => s.email === req.user.email);
+    if (idx >= 0) mine = { rank: idx + 1, pages: stats[idx].pages, streak: stats[idx].streak };
+  }
+  res.json({ top5, mine });
 });
 
 app.post('/api/books', authMiddleware, adminOnly, upload.single('file'), async (req, res) => {
@@ -281,18 +305,25 @@ app.post('/api/reading/heartbeat', authMiddleware, async (req, res) => {
   try {
     const bookId = req.body.bookId;
     const currentPage = Math.max(1, Math.floor(Number(req.body.currentPage) || 1));
+    const totalPages = Math.max(0, Math.floor(Number(req.body.totalPages) || 0));
     const seconds = Math.max(0, Math.min(120, Number(req.body.seconds) || 0));
     const book = await Book.findById(bookId);
     if (!book) return res.status(404).json({ error: 'Book not found.' });
+
+    if (totalPages > 0 && book.totalPages !== totalPages) {
+      book.totalPages = totalPages;
+      await book.save();
+    }
 
     let progress = await Progress.findOne({ userEmail: req.user.email, bookId });
     if (!progress) {
       progress = new Progress({
         userEmail: req.user.email, bookId,
         bookTitle: book.title, bookAuthor: book.author,
-        maxPage: 0, minutesReading: 0
+        maxPage: 0, totalPages: book.totalPages, minutesReading: 0
       });
     }
+    if (totalPages > 0) progress.totalPages = totalPages;
     const delta = currentPage > progress.maxPage ? currentPage - progress.maxPage : 0;
     progress.maxPage = Math.max(progress.maxPage, currentPage);
     progress.minutesReading += seconds / 60;
@@ -319,6 +350,16 @@ app.post('/api/reading/heartbeat', authMiddleware, async (req, res) => {
 app.get('/api/reading/progress/:bookId', authMiddleware, async (req, res) => {
   const progress = await Progress.findOne({ userEmail: req.user.email, bookId: req.params.bookId });
   res.json({ maxPage: progress ? progress.maxPage : 0 });
+});
+
+app.get('/api/reading/mine', authMiddleware, async (req, res) => {
+  const progresses = await Progress.find({ userEmail: req.user.email }).sort({ lastReadAt: -1 });
+  res.json({
+    items: progresses.map(p => ({
+      bookId: p.bookId, title: p.bookTitle, author: p.bookAuthor,
+      maxPage: p.maxPage, totalPages: p.totalPages
+    }))
+  });
 });
 
 app.post('/api/activity/heartbeat', authMiddleware, async (req, res) => {

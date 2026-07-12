@@ -6,6 +6,7 @@ const progressSchema = new mongoose.Schema({
   bookTitle: { type: String, required: true },
   bookAuthor: { type: String, default: '' },
   maxPage: { type: Number, default: 0 },
+  totalPages: { type: Number, default: 0 },
   minutesReading: { type: Number, default: 0 },
   lastReadAt: { type: Date }
 }, { timestamps: true });

@@ -7,6 +7,7 @@ const bookSchema = new mongoose.Schema({
   contentType: { type: String, required: true },
   fileId: { type: mongoose.Schema.Types.ObjectId, required: true },
   size: { type: Number, default: 0 },
+  totalPages: { type: Number, default: 0 },
   uploadedBy: { type: String, required: true }
 }, { timestamps: true });
 
