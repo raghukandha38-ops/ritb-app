@@ -196,19 +196,6 @@
       <div class="stat"><div class="num" id="stuTotalPages">0</div><div class="lbl">Pages logged</div></div>
       <div class="stat"><div class="num" id="stuTotalSessions">0</div><div class="lbl">Reading sessions</div></div>
     </div>
-    <p class="section-title">Log today's reading</p>
-    <div class="log-form">
-      <label for="logBookSelect">Pick a library book <span style="font-weight:400;color:var(--text-mute);">(optional — auto-fills the title)</span></label>
-      <select id="logBookSelect" onchange="handlePickLogBook()"><option value="">— choose from library —</option></select>
-      <div class="row" style="margin-top:12px;">
-        <div><label for="logBook">Book title</label><input type="text" id="logBook" placeholder="The Alchemist"></div>
-        <div><label for="logPages">Pages read</label><input type="text" id="logPages" placeholder="e.g. 15"></div>
-        <div><label for="logDate">Date</label><input type="text" id="logDate" placeholder="YYYY-MM-DD"></div>
-      </div>
-      <p class="hint" style="text-align:left;margin-top:8px;">Reading a book from the library in-app already logs pages and time automatically — this form is for books outside the library.</p>
-      <button class="btn" style="max-width:220px;" onclick="handleAddLog()">Add entry</button>
-      <div id="logMsg"></div>
-    </div>
     <p class="section-title">Your reading log</p>
     <div id="logTableWrap"></div>
     <p class="section-title">Library</p>
@@ -275,7 +262,6 @@ let readingHeartbeatTimer = null, readingLastTick = null;
 let appHeartbeatTimer = null, appLastTick = null;
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
-document.getElementById('logDate').value = todayStr();
 
 function switchTab(tab){
   document.getElementById('tabLogin').classList.toggle('active', tab==='login');
@@ -400,22 +386,6 @@ async function renderStudentDash(){
   wrap.innerHTML = '<table><tr><th>Date</th><th>Book</th><th>Pages</th></tr>'+rows+'</table>';
 }
 
-async function handleAddLog(){
-  clearMsg('logMsg');
-  const book = document.getElementById('logBook').value.trim();
-  const pages = document.getElementById('logPages').value.trim();
-  const date = document.getElementById('logDate').value.trim() || todayStr();
-  try{
-    await api('/api/logs', { method:'POST', body: JSON.stringify({ book, pages, date }) });
-    document.getElementById('logBook').value = '';
-    document.getElementById('logPages').value = '';
-    showMsg('logMsg','Entry added.','ok');
-    await renderStudentDash();
-  }catch(e){
-    showMsg('logMsg', e.message, 'err');
-  }
-}
-
 async function renderAdminDash(){
   const wrap = document.getElementById('rosterTableWrap');
   wrap.innerHTML = '<div class="empty">Loading roster...</div>';
@@ -469,7 +439,6 @@ async function renderLibrary(wrapId, isAdmin){
   try{
     const { books } = await api('/api/books');
     libraryBooks = books;
-    populateLogBookSelect(books);
     if(!books.length){
       wrap.innerHTML = '<div class="empty">No books uploaded yet.</div>';
       return;
@@ -477,26 +446,17 @@ async function renderLibrary(wrapId, isAdmin){
     const rows = books.map(b => {
       const readCell = '<a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>';
       const delCell = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
-      return '<tr><td>'+escapeHtml(b.title)+'</td><td>'+escapeHtml(b.author)+'</td><td>'+formatSize(b.size)+'</td><td>'+readCell+delCell+'</td></tr>';
+      return '<tr><td>'+escapeHtml(b.title)+'</td><td>'+escapeHtml(b.author)+'</td><td>'+formatDate(b.createdAt)+'</td><td>'+formatSize(b.size)+'</td><td>'+readCell+delCell+'</td></tr>';
     }).join('');
-    wrap.innerHTML = '<table><tr><th>Title</th><th>Author</th><th>Size</th><th>Action</th></tr>'+rows+'</table>';
+    wrap.innerHTML = '<table><tr><th>Title</th><th>Author</th><th>Date</th><th>Size</th><th>Action</th></tr>'+rows+'</table>';
   }catch(e){
     wrap.innerHTML = '<div class="empty">Could not load the library.</div>';
   }
 }
 
-function populateLogBookSelect(books){
-  const sel = document.getElementById('logBookSelect');
-  if(!sel) return;
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— choose from library —</option>' +
-    books.map(b => '<option value="'+escapeHtml(b.title)+'">'+escapeHtml(b.title)+' — '+escapeHtml(b.author)+'</option>').join('');
-  sel.value = current;
-}
-
-function handlePickLogBook(){
-  const sel = document.getElementById('logBookSelect');
-  if(sel.value) document.getElementById('logBook').value = sel.value;
+function formatDate(iso){
+  if(!iso) return '-';
+  return new Date(iso).toISOString().slice(0,10);
 }
 
 function handleOpenBook(bookId){
