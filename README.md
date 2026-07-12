@@ -67,6 +67,23 @@ npm start
 
 Then open http://localhost:3000
 
+## Book library (admin uploads, students read)
+
+Faculty/Admin accounts now see an **Upload a book** panel — title, author, and a
+file picker (PDF, EPUB, DOC, DOCX, TXT). Uploaded files are stored inside your
+MongoDB database itself (via GridFS), so there's no extra service to set up.
+
+Every logged-in user (student or admin) sees a **Library** section listing all
+uploaded books with a **Read** link that opens the file in a new tab. Admins
+also get a **Remove** link to delete a book.
+
+Limits to know:
+- Each file is capped at 20MB.
+- MongoDB Atlas's free (M0) tier gives you 512MB of total storage — plenty for
+  a modest library of PDFs, but keep an eye on it if you're uploading many
+  large scanned books. You can check usage under your cluster's **Metrics**
+  tab in Atlas.
+
 ## Notes and limits
 
 - **Free Render tier sleeps** after 15 minutes of no traffic, so the first

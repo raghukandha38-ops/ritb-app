@@ -195,6 +195,8 @@
     </div>
     <p class="section-title">Your reading log</p>
     <div id="logTableWrap"></div>
+    <p class="section-title">Library</p>
+    <div id="studentLibraryWrap"></div>
   </div>
 </div>
 
@@ -211,6 +213,19 @@
     </div>
     <p class="section-title">Student roster</p>
     <div id="rosterTableWrap"></div>
+    <p class="section-title">Upload a book</p>
+    <div class="log-form">
+      <div class="row">
+        <div><label for="bookTitle">Book title</label><input type="text" id="bookTitle" placeholder="The Alchemist"></div>
+        <div><label for="bookAuthor">Author</label><input type="text" id="bookAuthor" placeholder="Paulo Coelho"></div>
+      </div>
+      <label for="bookFile">File</label>
+      <input type="file" id="bookFile" accept=".pdf,.epub,.doc,.docx,.txt">
+      <button class="btn" style="max-width:220px;" onclick="handleUploadBook()">Upload</button>
+      <div id="uploadMsg"></div>
+    </div>
+    <p class="section-title">Library</p>
+    <div id="adminLibraryWrap"></div>
   </div>
 </div>
 
@@ -310,10 +325,12 @@ async function enterApp(user){
     document.getElementById('adminName').textContent = 'Welcome, ' + user.name;
     document.getElementById('adminDash').classList.add('show');
     await renderAdminDash();
+    await renderLibrary('adminLibraryWrap', true);
   }else{
     document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
     document.getElementById('studentDash').classList.add('show');
     await renderStudentDash();
+    await renderLibrary('studentLibraryWrap', false);
   }
 }
 
@@ -383,6 +400,80 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str == null ? '' : str;
   return d.innerHTML;
+}
+
+function fileLink(bookId){
+  const token = localStorage.getItem(TOKEN_KEY);
+  return '/api/books/' + bookId + '/file?token=' + encodeURIComponent(token);
+}
+
+function formatSize(bytes){
+  if(!bytes) return '';
+  const kb = bytes / 1024;
+  if(kb < 1024) return Math.round(kb) + ' KB';
+  return (kb/1024).toFixed(1) + ' MB';
+}
+
+async function renderLibrary(wrapId, isAdmin){
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = '<div class="empty">Loading library...</div>';
+  try{
+    const { books } = await api('/api/books');
+    if(!books.length){
+      wrap.innerHTML = '<div class="empty">No books uploaded yet.</div>';
+      return;
+    }
+    const rows = books.map(b => {
+      const readCell = '<a href="'+fileLink(b.id)+'" target="_blank" rel="noopener">Read</a>';
+      const delCell = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
+      return '<tr><td>'+escapeHtml(b.title)+'</td><td>'+escapeHtml(b.author)+'</td><td>'+formatSize(b.size)+'</td><td>'+readCell+delCell+'</td></tr>';
+    }).join('');
+    wrap.innerHTML = '<table><tr><th>Title</th><th>Author</th><th>Size</th><th>Action</th></tr>'+rows+'</table>';
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load the library.</div>';
+  }
+}
+
+async function handleUploadBook(){
+  clearMsg('uploadMsg');
+  const title = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('bookAuthor').value.trim();
+  const fileInput = document.getElementById('bookFile');
+  const file = fileInput.files[0];
+  if(!title || !author || !file){
+    showMsg('uploadMsg','Enter a title, author, and choose a file.','err'); return;
+  }
+  const form = new FormData();
+  form.append('title', title);
+  form.append('author', author);
+  form.append('file', file);
+
+  const token = localStorage.getItem(TOKEN_KEY);
+  try{
+    const res = await fetch('/api/books', {
+      method:'POST',
+      headers: { 'Authorization':'Bearer '+token },
+      body: form
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || 'Upload failed.');
+    document.getElementById('bookTitle').value = '';
+    document.getElementById('bookAuthor').value = '';
+    fileInput.value = '';
+    showMsg('uploadMsg','Book uploaded.','ok');
+    await renderLibrary('adminLibraryWrap', true);
+  }catch(e){
+    showMsg('uploadMsg', e.message, 'err');
+  }
+}
+
+async function handleDeleteBook(id, wrapId, isAdmin){
+  try{
+    await api('/api/books/'+id, { method:'DELETE' });
+    await renderLibrary(wrapId, isAdmin);
+  }catch(e){
+    alert(e.message);
+  }
 }
 
 (async function init(){

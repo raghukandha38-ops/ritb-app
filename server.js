@@ -4,9 +4,11 @@ const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 
 const User = require('./models/User');
 const Log = require('./models/Log');
+const Book = require('./models/Book');
 
 const app = express();
 app.use(express.json());
@@ -16,17 +18,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-before-deployin
 const PORT = process.env.PORT || 3000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }
+});
+
+let gfsBucket;
+
 if (!process.env.MONGODB_URI) {
   console.warn('Warning: MONGODB_URI is not set. The server will not be able to reach a database.');
 } else {
   mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB connection error:', err.message));
+
+  mongoose.connection.once('open', () => {
+    gfsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'books' });
+    console.log('Book file storage ready');
+  });
 }
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const headerToken = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = headerToken || req.query.token;
   if (!token) return res.status(401).json({ error: 'Log in to continue.' });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -175,6 +190,81 @@ app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
 
   results.sort((a, b) => b.pages - a.pages);
   res.json({ students: results, totalStudents: students.length, totalPages, totalSessions });
+});
+
+app.post('/api/books', authMiddleware, adminOnly, upload.single('file'), async (req, res) => {
+  try {
+    if (!gfsBucket) return res.status(503).json({ error: 'Storage is not ready yet. Try again in a moment.' });
+    const title = (req.body.title || '').trim();
+    const author = (req.body.author || '').trim();
+    if (!title || !author) {
+      return res.status(400).json({ error: 'Enter both a book title and an author.' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Choose a file to upload.' });
+    }
+
+    const uploadStream = gfsBucket.openUploadStream(req.file.originalname, {
+      contentType: req.file.mimetype
+    });
+    uploadStream.end(req.file.buffer);
+
+    uploadStream.on('finish', async () => {
+      const book = await Book.create({
+        title,
+        author,
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+        fileId: uploadStream.id,
+        size: req.file.size,
+        uploadedBy: req.user.email
+      });
+      res.json({ book: { id: book._id, title: book.title, author: book.author, filename: book.filename, size: book.size, createdAt: book.createdAt } });
+    });
+
+    uploadStream.on('error', () => {
+      res.status(500).json({ error: 'Upload failed. Try again.' });
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Upload failed. Try again.' });
+  }
+});
+
+app.get('/api/books', authMiddleware, async (req, res) => {
+  const books = await Book.find().sort({ createdAt: -1 });
+  res.json({
+    books: books.map(b => ({
+      id: b._id, title: b.title, author: b.author, filename: b.filename,
+      size: b.size, createdAt: b.createdAt, uploadedBy: b.uploadedBy
+    }))
+  });
+});
+
+app.get('/api/books/:id/file', authMiddleware, async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ error: 'Book not found.' });
+    res.set('Content-Type', book.contentType);
+    res.set('Content-Disposition', 'inline; filename="' + book.filename.replace(/"/g, '') + '"');
+    gfsBucket.openDownloadStream(book.fileId)
+      .on('error', () => res.status(404).end())
+      .pipe(res);
+  } catch (e) {
+    res.status(400).json({ error: 'Could not open that file.' });
+  }
+});
+
+app.delete('/api/books/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ error: 'Book not found.' });
+    await gfsBucket.delete(book.fileId).catch(() => {});
+    await book.deleteOne();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not delete that book.' });
+  }
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
