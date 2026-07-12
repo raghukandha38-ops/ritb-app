@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RITB | Reading Habit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink-900:#101826;
+    --ink-700:#1B2A41;
+    --paper:#EFE9D8;
+    --paper-2:#F7F3E8;
+    --brass:#B8863B;
+    --brass-dark:#8C6425;
+    --moss:#5C7A5E;
+    --moss-dark:#3E5640;
+    --rust:#A54D3A;
+    --text-dark:#1B2A41;
+    --text-mute:#5B6472;
+    --border:#D9D0B8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--ink-900);color:var(--text-dark);}
+  .wrap{min-height:100vh;display:flex;}
+  .brand-panel{
+    flex:1 1 40%;background:var(--ink-700);color:var(--paper-2);padding:56px 48px;
+    display:flex;flex-direction:column;justify-content:space-between;min-width:320px;
+  }
+  .brand-mark{font-family:'Fraunces',serif;font-weight:600;font-size:40px;letter-spacing:0.5px;margin:0;}
+  .brand-tag{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--brass);margin-top:8px;}
+  .quote{font-family:'Fraunces',serif;font-style:italic;font-size:20px;line-height:1.5;color:var(--paper-2);opacity:0.92;max-width:380px;}
+  .shelf{display:flex;align-items:flex-end;gap:6px;height:110px;margin:32px 0;}
+  .spine{border-radius:3px 3px 0 0;flex:0 0 auto;}
+  .foot-note{font-size:13px;color:#9FB0C4;line-height:1.6;}
+  .auth-panel{flex:1 1 60%;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:40px 24px;}
+  .card{width:100%;max-width:420px;position:relative;}
+  .ribbon-toggle{display:flex;position:relative;}
+  .ribbon{
+    flex:1;text-align:center;padding:14px 0 22px;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;background:#E4DBC2;color:var(--text-mute);
+    border:none;position:relative;transition:background .15s ease, color .15s ease;
+  }
+  .ribbon.active{background:var(--brass);color:#fff;}
+  .ribbon:first-child{border-radius:10px 0 0 0;}
+  .ribbon:last-child{border-radius:0 10px 0 0;}
+  .ribbon.active::after{
+    content:"";position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:10px solid var(--brass);
+  }
+  .panel-body{background:var(--paper-2);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:36px 36px 32px;}
+  h2.form-title{font-family:'Fraunces',serif;font-weight:500;font-size:24px;margin:0 0 4px;}
+  p.form-sub{font-size:13px;color:var(--text-mute);margin:0 0 24px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--text-mute);margin:16px 0 6px;letter-spacing:0.3px;}
+  input[type=text],input[type=email],input[type=password]{
+    width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;
+    font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--text-dark);
+  }
+  input:focus{outline:2px solid var(--brass);outline-offset:1px;}
+  .role-picker{display:flex;gap:10px;margin-top:6px;}
+  .role-opt{flex:1;border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;cursor:pointer;font-size:13px;background:#fff;color:var(--text-mute);}
+  .role-opt.selected{border-color:var(--moss);background:#EEF3EC;color:var(--moss-dark);font-weight:600;}
+  .btn{width:100%;margin-top:22px;padding:12px;border:none;border-radius:8px;background:var(--brass);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn:hover{background:var(--brass-dark);}
+  .btn:disabled{opacity:0.6;cursor:default;}
+  .msg{margin-top:14px;font-size:13px;padding:10px 12px;border-radius:8px;}
+  .msg.err{background:#F6E2DC;color:var(--rust);}
+  .msg.ok{background:#E7EEE6;color:var(--moss-dark);}
+  .dash{display:none;min-height:100vh;background:var(--paper);}
+  .dash.show{display:block;}
+  .topbar{background:var(--ink-700);color:var(--paper-2);padding:18px 32px;display:flex;justify-content:space-between;align-items:center;}
+  .topbar .name{font-family:'Fraunces',serif;font-size:19px;}
+  .topbar .role-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--brass);letter-spacing:1.5px;text-transform:uppercase;}
+  .logout{background:transparent;border:1px solid #3A4E6B;color:#CBD6E4;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;}
+  .logout:hover{background:#213249;}
+  .content{max-width:900px;margin:0 auto;padding:36px 24px 60px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+  .stat{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .stat .num{font-family:'Fraunces',serif;font-size:28px;color:var(--ink-700);}
+  .stat .lbl{font-size:12px;color:var(--text-mute);letter-spacing:0.3px;}
+  .section-title{font-family:'Fraunces',serif;font-size:19px;margin:0 0 14px;}
+  .log-form{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:28px;}
+  .log-form .row{display:flex;gap:12px;flex-wrap:wrap;}
+  .log-form .row > div{flex:1;min-width:140px;}
+  table{width:100%;border-collapse:collapse;background:var(--paper-2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  th,td{text-align:left;padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border);}
+  th{background:#E7E0CB;color:var(--text-mute);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;}
+  tr:last-child td{border-bottom:none;}
+  .empty{color:var(--text-mute);font-size:13px;padding:18px;text-align:center;}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;}
+  .badge{background:var(--bg-accent,#EEF3EC);background:#EEF3EC;border:1px solid var(--moss);color:var(--moss-dark);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;}
+  .badge.gold{background:#FBF1DC;border-color:var(--brass);color:var(--brass-dark);}
+  .leader-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--paper-2);}
+  .leader-row:first-child{border-radius:10px 10px 0 0;}
+  .leader-row:last-child{border-bottom:none;border-radius:0 0 10px 10px;}
+  .leader-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+  .leader-rank{font-family:'Fraunces',serif;font-size:16px;width:24px;color:var(--text-mute);}
+  .leader-rank.top{color:var(--brass-dark);}
+  .leader-name{flex:1;font-size:14px;}
+  .leader-name .cls{color:var(--text-mute);font-size:12px;display:block;}
+  .leader-pages{font-size:14px;font-weight:600;color:var(--ink-700);}
+  .my-rank{font-size:13px;color:var(--text-mute);margin:0 0 24px;}
+  .progress-card{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+  .progress-card .pc-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .progress-card .pc-title{font-weight:600;font-size:14px;}
+  .progress-card .pc-author{color:var(--text-mute);font-size:12px;}
+  .progress-bar-track{background:#E7E0CB;border-radius:999px;height:8px;overflow:hidden;}
+  .progress-bar-fill{background:var(--moss);height:100%;border-radius:999px;}
+  .progress-card .pc-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-mute);margin-top:6px;}
+  .progress-card .pc-continue{margin-top:10px;}
+  .reader{display:none;min-height:100vh;background:var(--ink-900);}
+  .reader.show{display:block;}
+  .reader-top{background:var(--ink-700);color:var(--paper-2);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .reader-top .titles{font-family:'Fraunces',serif;font-size:16px;}
+  .reader-top .titles .author{font-family:'Inter',sans-serif;font-size:12px;color:#9FB0C4;}
+  .reader-body{display:flex;flex-direction:column;align-items:center;padding:24px;}
+  .reader-body canvas{max-width:100%;background:#fff;box-shadow:0 0 0 1px var(--border);}
+  .reader-controls{display:flex;align-items:center;gap:16px;margin-top:16px;color:var(--paper-2);font-size:13px;}
+  .reader-controls button{padding:8px 16px;border:none;border-radius:8px;background:var(--brass);color:#fff;font-size:13px;cursor:pointer;}
+  .reader-controls button:hover{background:var(--brass-dark);}
+  .icon-btn{background:transparent;border:1px solid #3A4E6B;color:#CBD6E4;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;}
+  .icon-btn:hover{background:#213249;}
+  @media(max-width:820px){ .wrap{flex-direction:column;} .brand-panel{padding:36px 28px;} .shelf{height:70px;} }
+</style>
+</head>
+<body>
+
+<div id="authWrap" class="wrap">
+  <div class="brand-panel">
+    <div>
+      <p class="brand-mark">RITB</p>
+      <p class="brand-tag">Reading habit</p>
+      <div class="shelf" id="shelf"></div>
+      <p class="quote">"A room without books is like a body without a soul."</p>
+    </div>
+    <p class="foot-note">One account, one shelf. Sign up once with your college email &mdash; the same email and password logs you in every time after.</p>
+  </div>
+
+  <div class="auth-panel">
+    <div class="card">
+      <div class="ribbon-toggle">
+        <button class="ribbon active" id="tabLogin" onclick="switchTab('login')">Log in</button>
+        <button class="ribbon" id="tabSignup" onclick="switchTab('signup')">Sign up</button>
+      </div>
+      <div class="panel-body">
+        <div id="loginForm">
+          <h2 class="form-title">Welcome back</h2>
+          <p class="form-sub">Log in with the email and password you signed up with.</p>
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="name@ritb.edu">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Your password">
+          <button class="btn" id="loginBtn" onclick="handleLogin()">Log in</button>
+          <div id="loginMsg"></div>
+        </div>
+
+        <div id="signupForm" style="display:none;">
+          <h2 class="form-title">Create your account</h2>
+          <p class="form-sub">One-time sign up. Use this same email and password for every future login.</p>
+          <label for="suName">Full name</label>
+          <input type="text" id="suName" placeholder="Ananya Rao">
+          <label for="suEmail">Email</label>
+          <input type="email" id="suEmail" placeholder="name@ritb.edu">
+          <label for="suClass">Class / department <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
+          <input type="text" id="suClass" placeholder="e.g. CSE - 3rd Year">
+          <label>I am a</label>
+          <div class="role-picker">
+            <div class="role-opt selected" id="roleStudent" onclick="pickRole('student')">Student</div>
+            <div class="role-opt" id="roleAdmin" onclick="pickRole('admin')">Faculty / Admin</div>
+          </div>
+          <div id="adminCodeField" style="display:none;">
+            <label for="suAdminCode">Admin invite code</label>
+            <input type="text" id="suAdminCode" placeholder="Provided by your site administrator">
+          </div>
+          <label for="suPassword">Password</label>
+          <input type="password" id="suPassword" placeholder="At least 6 characters">
+          <label for="suConfirm">Confirm password</label>
+          <input type="password" id="suConfirm" placeholder="Retype your password">
+          <button class="btn" id="signupBtn" onclick="handleSignup()">Create account</button>
+          <div id="signupMsg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="studentDash" class="dash">
+  <div class="topbar">
+    <div><div class="name" id="stuName">&nbsp;</div><div class="role-tag">Student</div></div>
+    <button class="logout" onclick="handleLogout()">Log out</button>
+  </div>
+  <div class="content">
+    <div class="grid">
+      <div class="stat"><div class="num" id="stuStreak">0</div><div class="lbl">Day streak</div></div>
+      <div class="stat"><div class="num" id="stuTotalPages">0</div><div class="lbl">Pages logged</div></div>
+      <div class="stat"><div class="num" id="stuTotalSessions">0</div><div class="lbl">Reading sessions</div></div>
+    </div>
+    <div class="badges" id="stuBadges"></div>
+    <p class="section-title">Currently reading</p>
+    <div id="currentlyReadingWrap"></div>
+    <p class="section-title">Reading over the last 14 days</p>
+    <div style="background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:28px;height:220px;">
+      <canvas id="readingChart"></canvas>
+    </div>
+    <p class="section-title">Leaderboard — top readers by pages</p>
+    <div id="leaderboardWrap"></div>
+    <p class="section-title">Your reading log</p>
+    <div id="logTableWrap"></div>
+    <p class="section-title">Library</p>
+    <div id="studentLibraryWrap"></div>
+  </div>
+</div>
+
+<div id="adminDash" class="dash">
+  <div class="topbar">
+    <div><div class="name" id="adminName">&nbsp;</div><div class="role-tag">Faculty / Admin</div></div>
+    <button class="logout" onclick="handleLogout()">Log out</button>
+  </div>
+  <div class="content">
+    <div class="grid">
+      <div class="stat"><div class="num" id="admStudents">0</div><div class="lbl">Registered students</div></div>
+      <div class="stat"><div class="num" id="admPages">0</div><div class="lbl">Total pages read</div></div>
+      <div class="stat"><div class="num" id="admSessions">0</div><div class="lbl">Total sessions logged</div></div>
+    </div>
+    <p class="section-title">Leaderboard — top readers by pages</p>
+    <div id="adminLeaderboardWrap"></div>
+    <p class="section-title">Student roster</p>
+    <div id="rosterTableWrap"></div>
+    <p class="section-title">Upload a book</p>
+    <div class="log-form">
+      <div class="row">
+        <div><label for="bookTitle">Book title</label><input type="text" id="bookTitle" placeholder="The Alchemist"></div>
+        <div><label for="bookAuthor">Author</label><input type="text" id="bookAuthor" placeholder="Paulo Coelho"></div>
+      </div>
+      <label for="bookFile">File</label>
+      <input type="file" id="bookFile" accept=".pdf,.epub,.doc,.docx,.txt">
+      <button class="btn" style="max-width:220px;" onclick="handleUploadBook()">Upload</button>
+      <div id="uploadMsg"></div>
+    </div>
+    <p class="section-title">Library</p>
+    <div id="adminLibraryWrap"></div>
+  </div>
+</div>
+
+<div id="readerView" class="reader">
+  <div class="reader-top">
+    <div class="titles">
+      <div id="readerTitle">&nbsp;</div>
+      <div class="author" id="readerAuthor">&nbsp;</div>
+    </div>
+    <button class="icon-btn" onclick="closeReader()">Close</button>
+  </div>
+  <div class="reader-body">
+    <canvas id="readerCanvas"></canvas>
+    <div class="reader-controls">
+      <button onclick="prevPdfPage()">Previous</button>
+      <span>Page <span id="readerCurrentPage">1</span> of <span id="readerTotalPages">1</span></span>
+      <button onclick="nextPdfPage()">Next</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN_KEY = 'ritb_token';
+let currentUser = null;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let libraryBooks = [];
+let pdfDoc = null, pdfPageNum = 1, pdfBookId = null;
+let readingHeartbeatTimer = null, readingLastTick = null;
+let appHeartbeatTimer = null, appLastTick = null;
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function buildShelf(){
+  const shelf = document.getElementById('shelf');
+  const heights = [70,95,60,110,80,50,100,65,90];
+  const colors = ['var(--brass)','var(--moss)','var(--paper-2)','var(--brass)','var(--moss)','var(--paper-2)','var(--brass)','var(--moss)','var(--paper-2)'];
+  shelf.innerHTML = '';
+  heights.forEach((h,i)=>{
+    const s = document.createElement('div');
+    s.className='spine';
+    s.style.height = h+'px';
+    s.style.width = (14 + (i%3)*4)+'px';
+    s.style.background = colors[i];
+    shelf.appendChild(s);
+  });
+}
+buildShelf();
+
+function switchTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('loginForm').style.display = tab==='login' ? 'block':'none';
+  document.getElementById('signupForm').style.display = tab==='signup' ? 'block':'none';
+}
+
+let selectedRole = 'student';
+function pickRole(role){
+  selectedRole = role;
+  document.getElementById('roleStudent').classList.toggle('selected', role==='student');
+  document.getElementById('roleAdmin').classList.toggle('selected', role==='admin');
+  document.getElementById('adminCodeField').style.display = role==='admin' ? 'block' : 'none';
+}
+
+function showMsg(elId, text, type){
+  document.getElementById(elId).innerHTML = '<div class="msg '+type+'">'+text+'</div>';
+}
+function clearMsg(elId){ document.getElementById(elId).innerHTML = ''; }
+
+async function api(path, options={}){
+  const token = localStorage.getItem(TOKEN_KEY);
+  const headers = Object.assign({'Content-Type':'application/json'}, options.headers||{});
+  if(token) headers['Authorization'] = 'Bearer '+token;
+  const res = await fetch(path, Object.assign({}, options, { headers }));
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+async function handleSignup(){
+  clearMsg('signupMsg');
+  const name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const cls = document.getElementById('suClass').value.trim();
+  const password = document.getElementById('suPassword').value;
+  const confirm = document.getElementById('suConfirm').value;
+  const adminCode = document.getElementById('suAdminCode').value.trim();
+
+  const btn = document.getElementById('signupBtn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try{
+    const data = await api('/api/auth/signup', {
+      method:'POST',
+      body: JSON.stringify({ name, email, cls, password, confirm, role: selectedRole, adminCode })
+    });
+    localStorage.setItem(TOKEN_KEY, data.token);
+    showMsg('signupMsg','Account created. Logging you in...','ok');
+    setTimeout(()=>enterApp(data.user), 500);
+  }catch(e){
+    showMsg('signupMsg', e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Create account';
+}
+
+async function handleLogin(){
+  clearMsg('loginMsg');
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+  try{
+    const data = await api('/api/auth/login', {
+      method:'POST',
+      body: JSON.stringify({ email, password })
+    });
+    localStorage.setItem(TOKEN_KEY, data.token);
+    enterApp(data.user);
+  }catch(e){
+    showMsg('loginMsg', e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Log in';
+}
+
+function handleLogout(){
+  localStorage.removeItem(TOKEN_KEY);
+  currentUser = null;
+  clearInterval(appHeartbeatTimer);
+  clearInterval(readingHeartbeatTimer);
+  appHeartbeatTimer = null;
+  readingHeartbeatTimer = null;
+  pdfDoc = null;
+  pdfBookId = null;
+  document.getElementById('studentDash').classList.remove('show');
+  document.getElementById('adminDash').classList.remove('show');
+  document.getElementById('readerView').classList.remove('show');
+  document.getElementById('authWrap').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+async function enterApp(user){
+  currentUser = user;
+  document.getElementById('authWrap').style.display = 'none';
+  startAppHeartbeat();
+  if(user.role === 'admin'){
+    document.getElementById('adminName').textContent = 'Welcome, ' + user.name;
+    document.getElementById('adminDash').classList.add('show');
+    await renderAdminDash();
+    await renderLibrary('adminLibraryWrap', true);
+    await renderLeaderboard('adminLeaderboardWrap');
+  }else{
+    document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
+    document.getElementById('studentDash').classList.add('show');
+    await renderStudentDash();
+    await renderLibrary('studentLibraryWrap', false);
+    await renderCurrentlyReading();
+    await renderLeaderboard('leaderboardWrap');
+  }
+}
+
+async function renderStudentDash(){
+  const { logs } = await api('/api/logs');
+  const totalPages = logs.reduce((s,l)=>s+Number(l.pages||0),0);
+  const streak = computeStreakClient(logs.map(l=>l.date));
+  document.getElementById('stuStreak').textContent = streak;
+  document.getElementById('stuTotalPages').textContent = totalPages;
+  document.getElementById('stuTotalSessions').textContent = logs.length;
+
+  renderBadges(streak, totalPages);
+  renderReadingChart(logs);
+
+  const wrap = document.getElementById('logTableWrap');
+  if(!logs.length){
+    wrap.innerHTML = '<div class="empty">No entries yet. Read a book from the library to get started.</div>';
+    return;
+  }
+  const rows = logs.map(l => '<tr><td>'+l.date+'</td><td>'+escapeHtml(l.book)+'</td><td>'+l.pages+'</td></tr>').join('');
+  wrap.innerHTML = '<table><tr><th>Date</th><th>Book</th><th>Pages</th></tr>'+rows+'</table>';
+}
+
+const STREAK_BADGES = [
+  { days: 3, label: '3-day spark' },
+  { days: 7, label: '1-week flame' },
+  { days: 14, label: '2-week bonfire' },
+  { days: 30, label: '30-day habit' }
+];
+const PAGE_BADGES = [
+  { pages: 100, label: '100 pages' },
+  { pages: 500, label: '500 pages' },
+  { pages: 1000, label: '1000 pages' },
+  { pages: 2500, label: '2500 pages' }
+];
+
+function renderBadges(streak, totalPages){
+  const wrap = document.getElementById('stuBadges');
+  if(!wrap) return;
+  const chips = [];
+  STREAK_BADGES.forEach(b => { if(streak >= b.days) chips.push('<span class="badge">'+b.label+'</span>'); });
+  PAGE_BADGES.forEach(b => { if(totalPages >= b.pages) chips.push('<span class="badge gold">'+b.label+'</span>'); });
+  wrap.innerHTML = chips.length ? chips.join('') : '<span class="badge" style="opacity:0.6;">No badges yet — keep reading</span>';
+}
+
+let readingChartInstance = null;
+function renderReadingChart(logs){
+  const canvas = document.getElementById('readingChart');
+  if(!canvas) return;
+  const days = [];
+  const totals = {};
+  for(let i = 13; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    days.push(key);
+    totals[key] = 0;
+  }
+  logs.forEach(l => { if(totals.hasOwnProperty(l.date)) totals[l.date] += Number(l.pages||0); });
+  const labels = days.map(d => d.slice(5));
+  const data = days.map(d => totals[d]);
+
+  if(readingChartInstance) readingChartInstance.destroy();
+  readingChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Pages read', data, backgroundColor: '#B8863B' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+async function renderCurrentlyReading(){
+  const wrap = document.getElementById('currentlyReadingWrap');
+  wrap.innerHTML = '<div class="empty">Loading...</div>';
+  try{
+    const { items } = await api('/api/reading/mine');
+    if(!items.length){
+      wrap.innerHTML = '<div class="empty">Nothing in progress yet — open a book from the library below.</div>';
+      return;
+    }
+    wrap.innerHTML = items.map(it => {
+      const pct = it.totalPages > 0 ? Math.min(100, Math.round((it.maxPage / it.totalPages) * 100)) : null;
+      const meta = pct !== null
+        ? '<div class="pc-meta"><span>Page '+it.maxPage+' of '+it.totalPages+'</span><span>'+pct+'%</span></div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+pct+'%;"></div></div>'
+        : '<div class="pc-meta"><span>Page '+it.maxPage+'</span></div>';
+      return '<div class="progress-card">' +
+        '<div class="pc-top"><span class="pc-title">'+escapeHtml(it.title)+'</span><span class="pc-author">'+escapeHtml(it.author)+'</span></div>' +
+        meta +
+        '<button class="btn pc-continue" style="max-width:180px;" onclick="handleOpenBook(\''+it.bookId+'\')">Continue reading</button>' +
+        '</div>';
+    }).join('');
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load reading progress.</div>';
+  }
+}
+
+async function renderLeaderboard(wrapId){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="empty">Loading...</div>';
+  try{
+    const { top5, mine } = await api('/api/leaderboard');
+    if(!top5.length){
+      wrap.innerHTML = '<div class="empty">No reading logged yet.</div>';
+      return;
+    }
+    const rows = top5.map(r =>
+      '<div class="leader-row"><span class="leader-rank'+(r.rank<=3?' top':'')+'">#'+r.rank+'</span>' +
+      '<span class="leader-name">'+escapeHtml(r.name)+'<span class="cls">'+escapeHtml(r.cls||'')+'</span></span>' +
+      '<span class="leader-pages">'+r.pages+' pages</span></div>'
+    ).join('');
+    wrap.innerHTML = '<div class="leader-list">'+rows+'</div>';
+    if(mine && mine.rank > 5){
+      wrap.innerHTML += '<p class="my-rank">Your rank: #'+mine.rank+' — '+mine.pages+' pages, '+mine.streak+'-day streak</p>';
+    }
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load the leaderboard.</div>';
+  }
+}
+
+async function renderAdminDash(){
+  const wrap = document.getElementById('rosterTableWrap');
+  wrap.innerHTML = '<div class="empty">Loading roster...</div>';
+  const { students, totalStudents, totalPages, totalSessions } = await api('/api/roster');
+  document.getElementById('admStudents').textContent = totalStudents;
+  document.getElementById('admPages').textContent = totalPages;
+  document.getElementById('admSessions').textContent = totalSessions;
+
+  if(!students.length){
+    wrap.innerHTML = '<div class="empty">No students have signed up yet.</div>';
+    return;
+  }
+  const rows = students.map(s =>
+    '<tr><td>'+escapeHtml(s.name)+'</td><td>'+escapeHtml(s.email)+'</td><td>'+escapeHtml(s.cls||'-')+'</td><td>'+s.streak+'</td><td>'+s.sessions+'</td><td>'+s.pages+'</td><td>'+s.readingMinutes+' min</td><td>'+s.activeMinutesToday+' min</td></tr>'
+  ).join('');
+  wrap.innerHTML = '<table><tr><th>Name</th><th>Email</th><th>Class</th><th>Streak</th><th>Sessions</th><th>Pages</th><th>Reading time</th><th>Active today</th></tr>'+rows+'</table>';
+}
+
+function computeStreakClient(dates){
+  const set = new Set(dates);
+  let streak = 0;
+  const d = new Date();
+  while(true){
+    const key = d.toISOString().slice(0,10);
+    if(set.has(key)){ streak++; d.setDate(d.getDate()-1); } else break;
+  }
+  return streak;
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
+}
+
+function fileLink(bookId){
+  const token = localStorage.getItem(TOKEN_KEY);
+  return '/api/books/' + bookId + '/file?token=' + encodeURIComponent(token);
+}
+
+function formatSize(bytes){
+  if(!bytes) return '';
+  const kb = bytes / 1024;
+  if(kb < 1024) return Math.round(kb) + ' KB';
+  return (kb/1024).toFixed(1) + ' MB';
+}
+
+async function renderLibrary(wrapId, isAdmin){
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = '<div class="empty">Loading library...</div>';
+  try{
+    const { books } = await api('/api/books');
+    libraryBooks = books;
+    if(!books.length){
+      wrap.innerHTML = '<div class="empty">No books uploaded yet.</div>';
+      return;
+    }
+    const rows = books.map(b => {
+      const readCell = '<a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>';
+      const delCell = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
+      return '<tr><td>'+escapeHtml(b.title)+'</td><td>'+escapeHtml(b.author)+'</td><td>'+formatDate(b.createdAt)+'</td><td>'+formatSize(b.size)+'</td><td>'+readCell+delCell+'</td></tr>';
+    }).join('');
+    wrap.innerHTML = '<table><tr><th>Title</th><th>Author</th><th>Date</th><th>Size</th><th>Action</th></tr>'+rows+'</table>';
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load the library.</div>';
+  }
+}
+
+function formatDate(iso){
+  if(!iso) return '-';
+  return new Date(iso).toISOString().slice(0,10);
+}
+
+function handleOpenBook(bookId){
+  const book = libraryBooks.find(b => b.id === bookId);
+  if(!book) return;
+  const isPdf = /\.pdf$/i.test(book.filename);
+  if(!isPdf){
+    window.open(fileLink(bookId), '_blank');
+    return;
+  }
+  openReader(book);
+}
+
+async function openReader(book){
+  document.getElementById('readerTitle').textContent = book.title;
+  document.getElementById('readerAuthor').textContent = book.author;
+  document.getElementById('readerView').classList.add('show');
+  pdfBookId = book.id;
+
+  const token = localStorage.getItem(TOKEN_KEY);
+  const resp = await fetch('/api/books/'+book.id+'/file?token='+encodeURIComponent(token));
+  const buf = await resp.arrayBuffer();
+  pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+  document.getElementById('readerTotalPages').textContent = pdfDoc.numPages;
+
+  let startPage = 1;
+  if(currentUser.role === 'student'){
+    try{
+      const prog = await api('/api/reading/progress/'+book.id);
+      if(prog.maxPage > 0) startPage = Math.min(prog.maxPage, pdfDoc.numPages);
+    }catch(e){}
+  }
+  pdfPageNum = startPage;
+  await renderPdfPage();
+  if(currentUser.role === 'student') startReadingHeartbeat();
+}
+
+async function renderPdfPage(){
+  const page = await pdfDoc.getPage(pdfPageNum);
+  const canvas = document.getElementById('readerCanvas');
+  const viewport = page.getViewport({ scale: 1.3 });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  document.getElementById('readerCurrentPage').textContent = pdfPageNum;
+}
+
+function nextPdfPage(){
+  if(pdfDoc && pdfPageNum < pdfDoc.numPages){ pdfPageNum++; renderPdfPage(); sendReadingHeartbeat(); }
+}
+function prevPdfPage(){
+  if(pdfDoc && pdfPageNum > 1){ pdfPageNum--; renderPdfPage(); }
+}
+
+function startReadingHeartbeat(){
+  readingLastTick = Date.now();
+  readingHeartbeatTimer = setInterval(()=>{
+    if(document.visibilityState === 'visible') sendReadingHeartbeat();
+  }, 20000);
+}
+
+async function sendReadingHeartbeat(){
+  if(!pdfBookId || currentUser.role !== 'student') return;
+  const now = Date.now();
+  const seconds = Math.round((now - readingLastTick)/1000);
+  readingLastTick = now;
+  const totalPages = pdfDoc ? pdfDoc.numPages : 0;
+  try{
+    await api('/api/reading/heartbeat', { method:'POST', body: JSON.stringify({ bookId: pdfBookId, currentPage: pdfPageNum, totalPages, seconds }) });
+  }catch(e){}
+}
+
+async function closeReader(){
+  await sendReadingHeartbeat();
+  clearInterval(readingHeartbeatTimer);
+  readingHeartbeatTimer = null;
+  pdfDoc = null;
+  pdfBookId = null;
+  document.getElementById('readerView').classList.remove('show');
+  if(currentUser.role === 'student'){
+    await renderStudentDash();
+    await renderCurrentlyReading();
+    await renderLeaderboard('leaderboardWrap');
+  }
+}
+
+function startAppHeartbeat(){
+  appLastTick = Date.now();
+  appHeartbeatTimer = setInterval(async ()=>{
+    const now = Date.now();
+    if(document.visibilityState === 'visible'){
+      const seconds = Math.round((now - appLastTick)/1000);
+      appLastTick = now;
+      try{ await api('/api/activity/heartbeat', { method:'POST', body: JSON.stringify({ seconds }) }); }catch(e){}
+    }else{
+      appLastTick = now;
+    }
+  }, 30000);
+}
+
+async function handleUploadBook(){
+  clearMsg('uploadMsg');
+  const title = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('bookAuthor').value.trim();
+  const fileInput = document.getElementById('bookFile');
+  const file = fileInput.files[0];
+  if(!title || !author || !file){
+    showMsg('uploadMsg','Enter a title, author, and choose a file.','err'); return;
+  }
+  const form = new FormData();
+  form.append('title', title);
+  form.append('author', author);
+  form.append('file', file);
+
+  const token = localStorage.getItem(TOKEN_KEY);
+  try{
+    const res = await fetch('/api/books', {
+      method:'POST',
+      headers: { 'Authorization':'Bearer '+token },
+      body: form
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || 'Upload failed.');
+    document.getElementById('bookTitle').value = '';
+    document.getElementById('bookAuthor').value = '';
+    fileInput.value = '';
+    showMsg('uploadMsg','Book uploaded.','ok');
+    await renderLibrary('adminLibraryWrap', true);
+  }catch(e){
+    showMsg('uploadMsg', e.message, 'err');
+  }
+}
+
+async function handleDeleteBook(id, wrapId, isAdmin){
+  try{
+    await api('/api/books/'+id, { method:'DELETE' });
+    await renderLibrary(wrapId, isAdmin);
+  }catch(e){
+    alert(e.message);
+  }
+}
+
+(async function init(){
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(!token) return;
+  try{
+    const { user } = await api('/api/auth/me');
+    await enterApp(user);
+  }catch(e){
+    localStorage.removeItem(TOKEN_KEY);
+  }
+})();
+</script>
+</body>
+</html>
