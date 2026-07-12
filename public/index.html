@@ -123,6 +123,28 @@
   .reader-controls button:hover{background:var(--brass-dark);}
   .icon-btn{background:transparent;border:1px solid #3A4E6B;color:#CBD6E4;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;}
   .icon-btn:hover{background:#213249;}
+  .reader-hint{color:#9FB0C4;font-size:12px;margin-top:10px;}
+  .pdf-page-wrap{position:relative;}
+  .textLayer{
+    position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;
+    line-height:1;text-align:initial;transform-origin:0 0;
+  }
+  .textLayer span, .textLayer br{
+    color:transparent;position:absolute;white-space:pre;cursor:text;
+    transform-origin:0% 0%;
+  }
+  .textLayer ::selection{ background:rgba(184,134,59,0.4); }
+  .word-popover{
+    position:fixed;z-index:1000;max-width:280px;background:var(--paper-2);
+    border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    padding:14px 16px;font-family:'Inter',sans-serif;color:var(--text-dark);
+  }
+  .word-popover .wp-word{font-family:'Fraunces',serif;font-size:17px;font-weight:600;}
+  .word-popover .wp-phonetic{color:var(--text-mute);font-size:12px;margin-left:6px;}
+  .word-popover .wp-pos{color:var(--moss-dark);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-top:8px;}
+  .word-popover .wp-def{font-size:13px;margin-top:2px;line-height:1.4;}
+  .word-popover .wp-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text-mute);font-size:14px;background:none;border:none;}
+  .word-popover .wp-empty{font-size:13px;color:var(--text-mute);}
   @media(max-width:820px){ .wrap{flex-direction:column;} .brand-panel{padding:36px 28px;} .shelf{height:70px;} }
 </style>
 </head>
@@ -254,12 +276,16 @@
     <button class="icon-btn" onclick="closeReader()">Close</button>
   </div>
   <div class="reader-body">
-    <canvas id="readerCanvas"></canvas>
+    <div class="pdf-page-wrap" id="pdfPageWrap">
+      <canvas id="readerCanvas"></canvas>
+      <div class="textLayer" id="readerTextLayer"></div>
+    </div>
     <div class="reader-controls">
       <button onclick="prevPdfPage()">Previous</button>
       <span>Page <span id="readerCurrentPage">1</span> of <span id="readerTotalPages">1</span></span>
       <button onclick="nextPdfPage()">Next</button>
     </div>
+    <p class="reader-hint">Double-click any word to look up its meaning.</p>
   </div>
 </div>
 
@@ -639,11 +665,96 @@ async function renderPdfPage(){
   canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
   document.getElementById('readerCurrentPage').textContent = pdfPageNum;
+
+  const wrap = document.getElementById('pdfPageWrap');
+  wrap.style.width = viewport.width + 'px';
+  wrap.style.height = viewport.height + 'px';
+
+  const textLayerDiv = document.getElementById('readerTextLayer');
+  textLayerDiv.innerHTML = '';
+  textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
+  try{
+    const textContent = await page.getTextContent();
+    await pdfjsLib.renderTextLayer({
+      textContentSource: textContent,
+      container: textLayerDiv,
+      viewport: viewport
+    }).promise;
+  }catch(e){
+    // text layer is optional (dictionary lookup); page still displays fine without it
+  }
 }
 
 function nextPdfPage(){
   if(pdfDoc && pdfPageNum < pdfDoc.numPages){ pdfPageNum++; renderPdfPage(); sendReadingHeartbeat(); }
 }
+
+document.getElementById('readerTextLayer').addEventListener('dblclick', handleWordLookup);
+
+function handleWordLookup(){
+  const selection = window.getSelection();
+  let word = (selection ? selection.toString() : '').trim();
+  word = word.replace(/^[^a-zA-Z']+|[^a-zA-Z']+$/g, '');
+  if(!word || /\s/.test(word)) return;
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  lookupWord(word, rect);
+}
+
+async function lookupWord(word, anchorRect){
+  closeWordPopover();
+  const popover = document.createElement('div');
+  popover.className = 'word-popover';
+  popover.id = 'wordPopover';
+  popover.innerHTML = '<button class="wp-close" onclick="closeWordPopover()">&times;</button><div class="wp-empty">Looking up "'+escapeHtml(word)+'"...</div>';
+  document.body.appendChild(popover);
+  positionPopover(popover, anchorRect);
+
+  try{
+    const res = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word.toLowerCase()));
+    if(!res.ok){
+      popover.innerHTML = '<button class="wp-close" onclick="closeWordPopover()">&times;</button><div class="wp-word">'+escapeHtml(word)+'</div><div class="wp-empty">No definition found.</div>';
+      return;
+    }
+    const data = await res.json();
+    const entry = data[0];
+    const phonetic = entry.phonetic || (entry.phonetics && entry.phonetics.find(p=>p.text) || {}).text || '';
+    let html = '<button class="wp-close" onclick="closeWordPopover()">&times;</button>';
+    html += '<span class="wp-word">'+escapeHtml(entry.word || word)+'</span>';
+    if(phonetic) html += '<span class="wp-phonetic">'+escapeHtml(phonetic)+'</span>';
+    (entry.meanings || []).slice(0,2).forEach(m=>{
+      html += '<div class="wp-pos">'+escapeHtml(m.partOfSpeech||'')+'</div>';
+      const def = m.definitions && m.definitions[0] ? m.definitions[0].definition : '';
+      html += '<div class="wp-def">'+escapeHtml(def)+'</div>';
+    });
+    popover.innerHTML = html;
+  }catch(e){
+    popover.innerHTML = '<button class="wp-close" onclick="closeWordPopover()">&times;</button><div class="wp-word">'+escapeHtml(word)+'</div><div class="wp-empty">Could not reach the dictionary. Check your connection.</div>';
+  }
+}
+
+function positionPopover(popover, anchorRect){
+  const margin = 10;
+  let top = anchorRect.bottom + margin;
+  let left = anchorRect.left;
+  const maxLeft = window.innerWidth - 300;
+  if(left > maxLeft) left = Math.max(10, maxLeft);
+  if(top > window.innerHeight - 150) top = anchorRect.top - margin - 150;
+  popover.style.top = Math.max(10, top) + 'px';
+  popover.style.left = Math.max(10, left) + 'px';
+}
+
+function closeWordPopover(){
+  const existing = document.getElementById('wordPopover');
+  if(existing) existing.remove();
+}
+
+document.addEventListener('click', (e)=>{
+  const popover = document.getElementById('wordPopover');
+  if(popover && !popover.contains(e.target) && e.target.closest('.textLayer') === null){
+    closeWordPopover();
+  }
+});
+
 function prevPdfPage(){
   if(pdfDoc && pdfPageNum > 1){ pdfPageNum--; renderPdfPage(); }
 }
