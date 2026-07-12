@@ -84,6 +84,27 @@ Limits to know:
   large scanned books. You can check usage under your cluster's **Metrics**
   tab in Atlas.
 
+## Automatic reading tracking
+
+For books uploaded as PDFs, students read them in a built-in page-by-page
+viewer (powered by pdf.js) instead of a separate tab. While they read:
+
+- **Pages are logged automatically.** Turning a page updates that day's
+  reading log — no manual typing needed. Reopening a book later resumes from
+  the last page reached.
+- **Reading time is tracked per book**, and total time active in the app per
+  day is tracked separately. Both show up on the admin roster as "Reading
+  time" and "Active today."
+
+This only works for PDFs read inside the app. Other file types (EPUB, DOC,
+DOCX, TXT) still open in a new tab, and books read outside the library
+(physical copies, other apps) still use the manual "Log today's reading"
+form — which now includes a dropdown to auto-fill the title from the library.
+
+No camera, microphone, or any device sensor is used — tracking is limited to
+which page is open and whether the browser tab is visible and focused, the
+same way any e-reader tracks reading progress.
+
 ## Notes and limits
 
 - **Free Render tier sleeps** after 15 minutes of no traffic, so the first

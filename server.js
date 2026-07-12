@@ -9,6 +9,8 @@ const multer = require('multer');
 const User = require('./models/User');
 const Log = require('./models/Log');
 const Book = require('./models/Book');
+const Progress = require('./models/Progress');
+const ActivityDay = require('./models/ActivityDay');
 
 const app = express();
 app.use(express.json());
@@ -172,19 +174,27 @@ app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
   const results = [];
   let totalPages = 0;
   let totalSessions = 0;
+  const today = new Date().toISOString().slice(0, 10);
 
   for (const s of students) {
     const logs = await Log.find({ userEmail: s.email });
     const pages = logs.reduce((sum, l) => sum + l.pages, 0);
     totalPages += pages;
     totalSessions += logs.length;
+
+    const progresses = await Progress.find({ userEmail: s.email });
+    const readingMinutes = progresses.reduce((sum, p) => sum + p.minutesReading, 0);
+    const activity = await ActivityDay.findOne({ userEmail: s.email, date: today });
+
     results.push({
       name: s.name,
       email: s.email,
       cls: s.cls,
       streak: computeStreak(logs.map(l => l.date)),
       sessions: logs.length,
-      pages
+      pages,
+      readingMinutes: Math.round(readingMinutes),
+      activeMinutesToday: activity ? Math.round(activity.minutes) : 0
     });
   }
 
@@ -265,6 +275,61 @@ app.delete('/api/books/:id', authMiddleware, adminOnly, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: 'Could not delete that book.' });
   }
+});
+
+app.post('/api/reading/heartbeat', authMiddleware, async (req, res) => {
+  try {
+    const bookId = req.body.bookId;
+    const currentPage = Math.max(1, Math.floor(Number(req.body.currentPage) || 1));
+    const seconds = Math.max(0, Math.min(120, Number(req.body.seconds) || 0));
+    const book = await Book.findById(bookId);
+    if (!book) return res.status(404).json({ error: 'Book not found.' });
+
+    let progress = await Progress.findOne({ userEmail: req.user.email, bookId });
+    if (!progress) {
+      progress = new Progress({
+        userEmail: req.user.email, bookId,
+        bookTitle: book.title, bookAuthor: book.author,
+        maxPage: 0, minutesReading: 0
+      });
+    }
+    const delta = currentPage > progress.maxPage ? currentPage - progress.maxPage : 0;
+    progress.maxPage = Math.max(progress.maxPage, currentPage);
+    progress.minutesReading += seconds / 60;
+    progress.lastReadAt = new Date();
+    await progress.save();
+
+    if (delta > 0) {
+      const date = new Date().toISOString().slice(0, 10);
+      const existing = await Log.findOne({ userEmail: req.user.email, book: book.title, date, auto: true });
+      if (existing) {
+        existing.pages += delta;
+        await existing.save();
+      } else {
+        await Log.create({ userEmail: req.user.email, book: book.title, pages: delta, date, auto: true });
+      }
+    }
+    res.json({ ok: true, maxPage: progress.maxPage });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Could not save reading progress.' });
+  }
+});
+
+app.get('/api/reading/progress/:bookId', authMiddleware, async (req, res) => {
+  const progress = await Progress.findOne({ userEmail: req.user.email, bookId: req.params.bookId });
+  res.json({ maxPage: progress ? progress.maxPage : 0 });
+});
+
+app.post('/api/activity/heartbeat', authMiddleware, async (req, res) => {
+  const seconds = Math.max(0, Math.min(120, Number(req.body.seconds) || 0));
+  const date = new Date().toISOString().slice(0, 10);
+  await ActivityDay.findOneAndUpdate(
+    { userEmail: req.user.email, date },
+    { $inc: { minutes: seconds / 60 } },
+    { upsert: true }
+  );
+  res.json({ ok: true });
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
