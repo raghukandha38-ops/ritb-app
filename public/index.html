@@ -204,7 +204,12 @@
           <label>I am a</label>
           <div class="role-picker">
             <div class="role-opt selected" id="roleStudent" onclick="pickRole('student')">Student</div>
-            <div class="role-opt" id="roleAdmin" onclick="pickRole('admin')">Faculty / Admin</div>
+            <div class="role-opt" id="roleFaculty" onclick="pickRole('faculty')">Faculty</div>
+            <div class="role-opt" id="roleAdmin" onclick="pickRole('admin')">Admin</div>
+          </div>
+          <div id="facultyCodeField" style="display:none;">
+            <label for="suFacultyCode">Faculty invite code</label>
+            <input type="text" id="suFacultyCode" placeholder="Provided by your site administrator">
           </div>
           <div id="adminCodeField" style="display:none;">
             <label for="suAdminCode">Admin invite code</label>
@@ -262,7 +267,7 @@
 
 <div id="adminDash" class="dash">
   <div class="topbar">
-    <div><div class="name" id="adminName">&nbsp;</div><div class="role-tag">Faculty / Admin</div></div>
+    <div><div class="name" id="adminName">&nbsp;</div><div class="role-tag">Admin</div></div>
     <button class="logout" onclick="handleLogout()">Log out</button>
   </div>
   <div class="content">
@@ -283,7 +288,7 @@
       </div>
       <label for="bookFile">File</label>
       <input type="file" id="bookFile" accept=".pdf,.epub,.doc,.docx,.txt">
-      <button class="btn" style="max-width:220px;" onclick="handleUploadBook()">Upload</button>
+      <button class="btn" style="max-width:220px;" onclick="handleUploadBook('admin')">Upload</button>
       <div id="uploadMsg"></div>
     </div>
     <p class="section-title">Library</p>
@@ -300,6 +305,41 @@
       <input type="password" id="cpConfirm_a" placeholder="Retype the new password">
       <button class="btn" style="max-width:220px;" onclick="handleChangePassword('_a')">Update password</button>
       <div id="cpMsg_a"></div>
+    </div>
+  </div>
+</div>
+
+<div id="facultyDash" class="dash">
+  <div class="topbar">
+    <div><div class="name" id="facultyName">&nbsp;</div><div class="role-tag">Faculty</div></div>
+    <button class="logout" onclick="handleLogout()">Log out</button>
+  </div>
+  <div class="content">
+    <p class="section-title">Leaderboard — top readers by pages</p>
+    <div id="facultyLeaderboardWrap"></div>
+    <p class="section-title">Upload a book</p>
+    <div class="log-form">
+      <div class="row">
+        <div><label for="facBookTitle">Book title</label><input type="text" id="facBookTitle" placeholder="The Alchemist"></div>
+        <div><label for="facBookAuthor">Author</label><input type="text" id="facBookAuthor" placeholder="Paulo Coelho"></div>
+      </div>
+      <label for="facBookFile">File</label>
+      <input type="file" id="facBookFile" accept=".pdf,.epub,.doc,.docx,.txt">
+      <button class="btn" style="max-width:220px;" onclick="handleUploadBook('faculty')">Upload</button>
+      <div id="facUploadMsg"></div>
+    </div>
+    <p class="section-title">Library</p>
+    <div id="facultyLibraryWrap"></div>
+    <p class="section-title">Change your password</p>
+    <div class="log-form">
+      <label for="cpCurrent_f">Current password</label>
+      <input type="password" id="cpCurrent_f" placeholder="Your current password">
+      <label for="cpNew_f">New password</label>
+      <input type="password" id="cpNew_f" placeholder="At least 6 characters">
+      <label for="cpConfirm_f">Confirm new password</label>
+      <input type="password" id="cpConfirm_f" placeholder="Retype the new password">
+      <button class="btn" style="max-width:220px;" onclick="handleChangePassword('_f')">Update password</button>
+      <div id="cpMsg_f"></div>
     </div>
   </div>
 </div>
@@ -379,7 +419,9 @@ let selectedRole = 'student';
 function pickRole(role){
   selectedRole = role;
   document.getElementById('roleStudent').classList.toggle('selected', role==='student');
+  document.getElementById('roleFaculty').classList.toggle('selected', role==='faculty');
   document.getElementById('roleAdmin').classList.toggle('selected', role==='admin');
+  document.getElementById('facultyCodeField').style.display = role==='faculty' ? 'block' : 'none';
   document.getElementById('adminCodeField').style.display = role==='admin' ? 'block' : 'none';
 }
 
@@ -406,13 +448,14 @@ async function handleSignup(){
   const password = document.getElementById('suPassword').value;
   const confirm = document.getElementById('suConfirm').value;
   const adminCode = document.getElementById('suAdminCode').value.trim();
+  const facultyCode = document.getElementById('suFacultyCode').value.trim();
 
   const btn = document.getElementById('signupBtn');
   btn.disabled = true; btn.textContent = 'Creating account...';
   try{
     const data = await api('/api/auth/signup', {
       method:'POST',
-      body: JSON.stringify({ name, email, cls, password, confirm, role: selectedRole, adminCode })
+      body: JSON.stringify({ name, email, cls, password, confirm, role: selectedRole, adminCode, facultyCode })
     });
     localStorage.setItem(TOKEN_KEY, data.token);
     showMsg('signupMsg','Account created. Logging you in...','ok');
@@ -458,6 +501,7 @@ function handleLogout(){
   pdfBookId = null;
   document.getElementById('studentDash').classList.remove('show');
   document.getElementById('adminDash').classList.remove('show');
+  document.getElementById('facultyDash').classList.remove('show');
   document.getElementById('readerView').classList.remove('show');
   document.getElementById('authWrap').style.display = 'flex';
   document.getElementById('loginEmail').value = '';
@@ -475,6 +519,11 @@ async function enterApp(user){
     await renderLibrary('adminLibraryWrap', true);
     await renderLeaderboard('adminLeaderboardWrap');
     await renderAdminAccounts();
+  }else if(user.role === 'faculty'){
+    document.getElementById('facultyName').textContent = 'Welcome, ' + user.name;
+    document.getElementById('facultyDash').classList.add('show');
+    await renderLibrary('facultyLibraryWrap', true);
+    await renderLeaderboard('facultyLeaderboardWrap');
   }else{
     document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
     document.getElementById('studentDash').classList.add('show');
@@ -630,7 +679,7 @@ async function renderAdminAccounts(){
   try{
     const { admins } = await api('/api/admins');
     if(!admins.length){
-      wrap.innerHTML = '<div class="empty">No other Faculty/Admin accounts yet.</div>';
+      wrap.innerHTML = '<div class="empty">No other Admin accounts yet.</div>';
       return;
     }
     const rows = admins.map(a =>
@@ -945,14 +994,20 @@ function startAppHeartbeat(){
   }, 30000);
 }
 
-async function handleUploadBook(){
-  clearMsg('uploadMsg');
-  const title = document.getElementById('bookTitle').value.trim();
-  const author = document.getElementById('bookAuthor').value.trim();
-  const fileInput = document.getElementById('bookFile');
+async function handleUploadBook(who){
+  const titleId = who === 'faculty' ? 'facBookTitle' : 'bookTitle';
+  const authorId = who === 'faculty' ? 'facBookAuthor' : 'bookAuthor';
+  const fileId = who === 'faculty' ? 'facBookFile' : 'bookFile';
+  const msgId = who === 'faculty' ? 'facUploadMsg' : 'uploadMsg';
+  const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
+
+  clearMsg(msgId);
+  const title = document.getElementById(titleId).value.trim();
+  const author = document.getElementById(authorId).value.trim();
+  const fileInput = document.getElementById(fileId);
   const file = fileInput.files[0];
   if(!title || !author || !file){
-    showMsg('uploadMsg','Enter a title, author, and choose a file.','err'); return;
+    showMsg(msgId,'Enter a title, author, and choose a file.','err'); return;
   }
   const form = new FormData();
   form.append('title', title);
@@ -968,13 +1023,13 @@ async function handleUploadBook(){
     });
     const data = await res.json().catch(()=>({}));
     if(!res.ok) throw new Error(data.error || 'Upload failed.');
-    document.getElementById('bookTitle').value = '';
-    document.getElementById('bookAuthor').value = '';
+    document.getElementById(titleId).value = '';
+    document.getElementById(authorId).value = '';
     fileInput.value = '';
-    showMsg('uploadMsg','Book uploaded.','ok');
-    await renderLibrary('adminLibraryWrap', true);
+    showMsg(msgId,'Book uploaded.','ok');
+    await renderLibrary(libWrapId, true);
   }catch(e){
-    showMsg('uploadMsg', e.message, 'err');
+    showMsg(msgId, e.message, 'err');
   }
 }
 
