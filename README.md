@@ -105,6 +105,30 @@ No camera, microphone, or any device sensor is used — tracking is limited to
 which page is open and whether the browser tab is visible and focused, the
 same way any e-reader tracks reading progress.
 
+## Three account types: Student, Faculty, Admin
+
+- **Student** — reads books, tracked automatically, sees badges/leaderboard/progress
+- **Faculty** — can upload and remove books in the library, sees the leaderboard,
+  but does **not** see the student roster, admin accounts, or password-reset
+  controls
+- **Admin** — everything Faculty can do, plus the full student roster, the
+  ability to reset any student's or admin's password, and the Admin accounts
+  list
+
+Both Faculty and Admin sign-up are locked behind separate invite codes, so
+you control who gets each level of access independently.
+
+**To open up Faculty sign-up**, add one more environment variable on Render:
+- Key: `FACULTY_INVITE_CODE`
+- Value: any word/phrase you choose, e.g. `RITB-Faculty-2026`
+
+Share this code only with teaching staff. `ADMIN_INVITE_CODE` (set earlier)
+continues to control who can register as a full Admin — keep that one more
+tightly held since Admins can reset anyone's password.
+
+If either variable isn't set, sign-up for that role is disabled entirely
+(safer default) until you add it.
+
 ## Password management (no email required)
 
 Since there's no domain set up for sending real emails, forgot-password works

@@ -54,7 +54,14 @@ function authMiddleware(req, res, next) {
 }
 
 function adminOnly(req, res, next) {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Faculty/admin access only.' });
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access only.' });
+  next();
+}
+
+function facultyOrAdmin(req, res, next) {
+  if (req.user.role !== 'faculty' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Faculty or Admin access only.' });
+  }
   next();
 }
 
@@ -92,7 +99,8 @@ app.post('/api/auth/signup', async (req, res) => {
     const email = (req.body.email || '').trim().toLowerCase();
     const password = req.body.password || '';
     const confirm = req.body.confirm || '';
-    const role = req.body.role === 'admin' ? 'admin' : 'student';
+    const roleInput = req.body.role;
+    const role = ['faculty', 'admin'].includes(roleInput) ? roleInput : 'student';
     const cls = (req.body.cls || '').trim();
 
     if (!name || !email || !password || !confirm) {
@@ -110,10 +118,19 @@ app.post('/api/auth/signup', async (req, res) => {
     if (role === 'admin') {
       const inviteCode = process.env.ADMIN_INVITE_CODE;
       if (!inviteCode) {
-        return res.status(403).json({ error: 'Faculty/Admin sign-up is not open right now. Contact your site administrator.' });
+        return res.status(403).json({ error: 'Admin sign-up is not open right now. Contact your site administrator.' });
       }
       if ((req.body.adminCode || '').trim() !== inviteCode) {
         return res.status(403).json({ error: 'Incorrect admin invite code.' });
+      }
+    }
+    if (role === 'faculty') {
+      const inviteCode = process.env.FACULTY_INVITE_CODE;
+      if (!inviteCode) {
+        return res.status(403).json({ error: 'Faculty sign-up is not open right now. Contact your site administrator.' });
+      }
+      if ((req.body.facultyCode || '').trim() !== inviteCode) {
+        return res.status(403).json({ error: 'Incorrect faculty invite code.' });
       }
     }
 
@@ -287,7 +304,7 @@ app.get('/api/leaderboard', authMiddleware, async (req, res) => {
   res.json({ top5, mine });
 });
 
-app.post('/api/books', authMiddleware, adminOnly, upload.single('file'), async (req, res) => {
+app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!gfsBucket) return res.status(503).json({ error: 'Storage is not ready yet. Try again in a moment.' });
     const title = (req.body.title || '').trim();
@@ -350,7 +367,7 @@ app.get('/api/books/:id/file', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/api/books/:id', authMiddleware, adminOnly, async (req, res) => {
+app.delete('/api/books/:id', authMiddleware, facultyOrAdmin, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ error: 'Book not found.' });
