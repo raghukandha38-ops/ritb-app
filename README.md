@@ -105,6 +105,57 @@ No camera, microphone, or any device sensor is used — tracking is limited to
 which page is open and whether the browser tab is visible and focused, the
 same way any e-reader tracks reading progress.
 
+## Password management (no email required)
+
+Since there's no domain set up for sending real emails, forgot-password works
+through the people already in the app instead:
+
+- **Change password** — anyone logged in (student or admin) can change their
+  own password anytime from their dashboard.
+- **Admin resets a student's password** — one click from the roster ("Reset
+  password"), admin sets a new password and shares it with the student
+  directly (in person, WhatsApp, whatever you already use).
+- **Admins reset each other's passwords** — the admin dashboard has an
+  "Admin accounts" list so one admin can help another who's locked out.
+
+**Last-resort recovery** (for the rare case where there's only one admin and
+they're locked out too): a hidden, secret-protected emergency reset. This is
+not exposed anywhere in the app — it's an API call only you would use.
+
+**To set it up:**
+1. On Render → `ritb-app` → **Environment**, add:
+   - Key: `SUPER_RESET_SECRET`
+   - Value: a long random phrase only you know (treat it like a master key)
+2. If you ever need it, run this from any terminal with internet access
+   (replace the bracketed parts):
+
+   ```
+   curl -X POST https://ritb-app.onrender.com/api/auth/emergency-reset \
+     -H "Content-Type: application/json" \
+     -d "{\"email\":\"[locked-out admin's email]\",\"newPassword\":\"[a new password]\",\"secret\":\"[your SUPER_RESET_SECRET]\"}"
+   ```
+
+If you don't set `SUPER_RESET_SECRET`, this endpoint simply refuses to do
+anything — it's opt-in and harmless to leave unset if you never expect to
+need it.
+
+## Click-to-define dictionary
+
+While reading a book in the in-app viewer, students can **double-click any
+word** to see its meaning in a small popup — part of speech and a short
+definition, right where they're reading. No need to leave the page or search
+elsewhere.
+
+This uses the free, no-signup Dictionary API (dictionaryapi.dev). A few things
+worth knowing:
+- It only covers standard English words — names, made-up words, or heavily
+  stylized text in a scanned PDF may come back as "No definition found."
+- It requires an internet connection each time a word is looked up (nothing
+  is stored or pre-downloaded).
+- It's a free community-run service with no guaranteed uptime — if it's ever
+  slow or down, the popup will say it couldn't reach the dictionary, but the
+  rest of the reader keeps working normally.
+
 ## Making reading engaging (gamification)
 
 **Badges** — students automatically earn badges for streaks (3, 7, 14, 30 days)

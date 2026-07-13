@@ -206,6 +206,67 @@ async function computeStudentStats() {
   return results;
 }
 
+app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
+  try {
+    const currentPassword = req.body.currentPassword || '';
+    const newPassword = req.body.newPassword || '';
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password needs at least 6 characters.' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!match) return res.status(401).json({ error: 'Current password is incorrect.' });
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not change the password.' });
+  }
+});
+
+app.get('/api/admins', authMiddleware, adminOnly, async (req, res) => {
+  const admins = await User.find({ role: 'admin', email: { $ne: req.user.email } });
+  res.json({ admins: admins.map(a => ({ name: a.name, email: a.email })) });
+});
+
+app.post('/api/admin/reset-password', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const targetEmail = (req.body.targetEmail || '').trim().toLowerCase();
+    const newPassword = req.body.newPassword || '';
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password needs at least 6 characters.' });
+    }
+    const target = await User.findOne({ email: targetEmail });
+    if (!target) return res.status(404).json({ error: 'No account with that email.' });
+    target.passwordHash = await bcrypt.hash(newPassword, 10);
+    await target.save();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not reset that password.' });
+  }
+});
+
+app.post('/api/auth/emergency-reset', async (req, res) => {
+  try {
+    const secret = process.env.SUPER_RESET_SECRET;
+    if (!secret) return res.status(403).json({ error: 'Emergency reset is not configured on this server.' });
+    if ((req.body.secret || '') !== secret) return res.status(403).json({ error: 'Incorrect secret.' });
+    const email = (req.body.email || '').trim().toLowerCase();
+    const newPassword = req.body.newPassword || '';
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password needs at least 6 characters.' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'No account with that email.' });
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Emergency reset failed.' });
+  }
+});
+
 app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
   const stats = await computeStudentStats();
   const totalPages = stats.reduce((sum, s) => sum + s.pages, 0);
