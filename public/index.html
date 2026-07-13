@@ -69,6 +69,8 @@
   .msg{margin-top:14px;font-size:13px;padding:10px 12px;border-radius:8px;}
   .msg.err{background:#F6E2DC;color:var(--rust);}
   .msg.ok{background:#E7EEE6;color:var(--moss-dark);}
+  .hint{font-size:13px;margin-top:14px;text-align:center;}
+  .hint a{color:var(--brass-dark);}
   .dash{display:none;min-height:100vh;background:var(--paper);}
   .dash.show{display:block;}
   .topbar{background:var(--ink-700);color:var(--paper-2);padding:18px 32px;display:flex;justify-content:space-between;align-items:center;}
@@ -111,6 +113,15 @@
   .progress-bar-fill{background:var(--moss);height:100%;border-radius:999px;}
   .progress-card .pc-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-mute);margin-top:6px;}
   .progress-card .pc-continue{margin-top:10px;}
+  .lib-card{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+  .lib-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .lib-title{font-weight:600;font-size:14px;}
+  .lib-author{color:var(--text-mute);font-size:12px;white-space:nowrap;}
+  .lib-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-mute);margin-top:10px;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(16,24,38,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{background:var(--paper-2);border-radius:12px;padding:28px;max-width:400px;width:100%;}
+  .modal-box h3{font-family:'Fraunces',serif;margin:0 0 16px;}
   .reader{display:none;min-height:100vh;background:var(--ink-900);}
   .reader.show{display:block;}
   .reader-top{background:var(--ink-700);color:var(--paper-2);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
@@ -177,6 +188,8 @@
           <input type="password" id="loginPassword" placeholder="Your password">
           <button class="btn" id="loginBtn" onclick="handleLogin()">Log in</button>
           <div id="loginMsg"></div>
+          <p class="hint"><a href="#" onclick="showForgotInfo();return false;">Forgot password?</a></p>
+          <div id="forgotInfo"></div>
         </div>
 
         <div id="signupForm" style="display:none;">
@@ -233,6 +246,17 @@
     <div id="logTableWrap"></div>
     <p class="section-title">Library</p>
     <div id="studentLibraryWrap"></div>
+    <p class="section-title">Change your password</p>
+    <div class="log-form">
+      <label for="cpCurrent_s">Current password</label>
+      <input type="password" id="cpCurrent_s" placeholder="Your current password">
+      <label for="cpNew_s">New password</label>
+      <input type="password" id="cpNew_s" placeholder="At least 6 characters">
+      <label for="cpConfirm_s">Confirm new password</label>
+      <input type="password" id="cpConfirm_s" placeholder="Retype the new password">
+      <button class="btn" style="max-width:220px;" onclick="handleChangePassword('_s')">Update password</button>
+      <div id="cpMsg_s"></div>
+    </div>
   </div>
 </div>
 
@@ -264,6 +288,19 @@
     </div>
     <p class="section-title">Library</p>
     <div id="adminLibraryWrap"></div>
+    <p class="section-title">Admin accounts</p>
+    <div id="adminAccountsWrap"></div>
+    <p class="section-title">Change your password</p>
+    <div class="log-form">
+      <label for="cpCurrent_a">Current password</label>
+      <input type="password" id="cpCurrent_a" placeholder="Your current password">
+      <label for="cpNew_a">New password</label>
+      <input type="password" id="cpNew_a" placeholder="At least 6 characters">
+      <label for="cpConfirm_a">Confirm new password</label>
+      <input type="password" id="cpConfirm_a" placeholder="Retype the new password">
+      <button class="btn" style="max-width:220px;" onclick="handleChangePassword('_a')">Update password</button>
+      <div id="cpMsg_a"></div>
+    </div>
   </div>
 </div>
 
@@ -286,6 +323,19 @@
       <button onclick="nextPdfPage()">Next</button>
     </div>
     <p class="reader-hint">Double-click any word to look up its meaning.</p>
+  </div>
+</div>
+
+<div id="resetPwOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <h3 id="resetPwTitle">Reset password</h3>
+    <label for="resetPwNew">New password</label>
+    <input type="password" id="resetPwNew" placeholder="At least 6 characters">
+    <label for="resetPwConfirm">Confirm new password</label>
+    <input type="password" id="resetPwConfirm" placeholder="Retype the new password">
+    <button class="btn" onclick="submitResetPassword()">Set new password</button>
+    <div id="resetPwMsg"></div>
+    <button class="icon-btn" style="margin-top:10px;" onclick="closeResetPwModal()">Cancel</button>
   </div>
 </div>
 
@@ -373,6 +423,11 @@ async function handleSignup(){
   btn.disabled = false; btn.textContent = 'Create account';
 }
 
+function showForgotInfo(){
+  document.getElementById('forgotInfo').innerHTML =
+    '<div class="msg ok">Students: ask your faculty/admin to reset your password from their dashboard. Faculty/Admin: ask another admin to reset yours from their Admin accounts list.</div>';
+}
+
 async function handleLogin(){
   clearMsg('loginMsg');
   const email = document.getElementById('loginEmail').value.trim();
@@ -419,6 +474,7 @@ async function enterApp(user){
     await renderAdminDash();
     await renderLibrary('adminLibraryWrap', true);
     await renderLeaderboard('adminLeaderboardWrap');
+    await renderAdminAccounts();
   }else{
     document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
     document.getElementById('studentDash').classList.add('show');
@@ -562,9 +618,91 @@ async function renderAdminDash(){
     return;
   }
   const rows = students.map(s =>
-    '<tr><td>'+escapeHtml(s.name)+'</td><td>'+escapeHtml(s.email)+'</td><td>'+escapeHtml(s.cls||'-')+'</td><td>'+s.streak+'</td><td>'+s.sessions+'</td><td>'+s.pages+'</td><td>'+s.readingMinutes+' min</td><td>'+s.activeMinutesToday+' min</td></tr>'
+    '<tr><td>'+escapeHtml(s.name)+'</td><td>'+escapeHtml(s.email)+'</td><td>'+escapeHtml(s.cls||'-')+'</td><td>'+s.streak+'</td><td>'+s.sessions+'</td><td>'+s.pages+'</td><td>'+s.readingMinutes+' min</td><td>'+s.activeMinutesToday+' min</td><td><a href="#" onclick="openResetPwModal(\''+escapeHtml(s.email)+'\',\''+escapeHtml(s.name)+'\');return false;">Reset password</a></td></tr>'
   ).join('');
-  wrap.innerHTML = '<table><tr><th>Name</th><th>Email</th><th>Class</th><th>Streak</th><th>Sessions</th><th>Pages</th><th>Reading time</th><th>Active today</th></tr>'+rows+'</table>';
+  wrap.innerHTML = '<table><tr><th>Name</th><th>Email</th><th>Class</th><th>Streak</th><th>Sessions</th><th>Pages</th><th>Reading time</th><th>Active today</th><th>Action</th></tr>'+rows+'</table>';
+}
+
+async function renderAdminAccounts(){
+  const wrap = document.getElementById('adminAccountsWrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="empty">Loading...</div>';
+  try{
+    const { admins } = await api('/api/admins');
+    if(!admins.length){
+      wrap.innerHTML = '<div class="empty">No other Faculty/Admin accounts yet.</div>';
+      return;
+    }
+    const rows = admins.map(a =>
+      '<tr><td>'+escapeHtml(a.name)+'</td><td>'+escapeHtml(a.email)+'</td><td><a href="#" onclick="openResetPwModal(\''+escapeHtml(a.email)+'\',\''+escapeHtml(a.name)+'\');return false;">Reset password</a></td></tr>'
+    ).join('');
+    wrap.innerHTML = '<table><tr><th>Name</th><th>Email</th><th>Action</th></tr>'+rows+'</table>';
+  }catch(e){
+    wrap.innerHTML = '<div class="empty">Could not load admin accounts.</div>';
+  }
+}
+
+let resetPwTargetEmail = null;
+
+function openResetPwModal(email, name){
+  resetPwTargetEmail = email;
+  document.getElementById('resetPwTitle').textContent = 'Reset password — ' + name;
+  document.getElementById('resetPwNew').value = '';
+  document.getElementById('resetPwConfirm').value = '';
+  document.getElementById('resetPwMsg').innerHTML = '';
+  document.getElementById('resetPwOverlay').classList.add('show');
+}
+
+function closeResetPwModal(){
+  document.getElementById('resetPwOverlay').classList.remove('show');
+}
+
+async function submitResetPassword(){
+  const newPw = document.getElementById('resetPwNew').value;
+  const confirmPw = document.getElementById('resetPwConfirm').value;
+  if(newPw.length < 6){
+    document.getElementById('resetPwMsg').innerHTML = '<div class="msg err">Password needs at least 6 characters.</div>';
+    return;
+  }
+  if(newPw !== confirmPw){
+    document.getElementById('resetPwMsg').innerHTML = '<div class="msg err">Passwords don\'t match.</div>';
+    return;
+  }
+  try{
+    await api('/api/admin/reset-password', {
+      method:'POST', body: JSON.stringify({ targetEmail: resetPwTargetEmail, newPassword: newPw })
+    });
+    document.getElementById('resetPwMsg').innerHTML = '<div class="msg ok">Password updated. Share it with them directly.</div>';
+    setTimeout(closeResetPwModal, 1500);
+  }catch(e){
+    document.getElementById('resetPwMsg').innerHTML = '<div class="msg err">'+e.message+'</div>';
+  }
+}
+
+async function handleChangePassword(suffix){
+  const currentPw = document.getElementById('cpCurrent'+suffix).value;
+  const newPw = document.getElementById('cpNew'+suffix).value;
+  const confirmPw = document.getElementById('cpConfirm'+suffix).value;
+  const msgId = 'cpMsg'+suffix;
+  if(newPw.length < 6){
+    document.getElementById(msgId).innerHTML = '<div class="msg err">New password needs at least 6 characters.</div>';
+    return;
+  }
+  if(newPw !== confirmPw){
+    document.getElementById(msgId).innerHTML = '<div class="msg err">New passwords don\'t match.</div>';
+    return;
+  }
+  try{
+    await api('/api/auth/change-password', {
+      method:'POST', body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw })
+    });
+    document.getElementById(msgId).innerHTML = '<div class="msg ok">Password updated.</div>';
+    document.getElementById('cpCurrent'+suffix).value = '';
+    document.getElementById('cpNew'+suffix).value = '';
+    document.getElementById('cpConfirm'+suffix).value = '';
+  }catch(e){
+    document.getElementById(msgId).innerHTML = '<div class="msg err">'+e.message+'</div>';
+  }
 }
 
 function computeStreakClient(dates){
@@ -606,12 +744,14 @@ async function renderLibrary(wrapId, isAdmin){
       wrap.innerHTML = '<div class="empty">No books uploaded yet.</div>';
       return;
     }
-    const rows = books.map(b => {
-      const readCell = '<a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>';
-      const delCell = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
-      return '<tr><td>'+escapeHtml(b.title)+'</td><td>'+escapeHtml(b.author)+'</td><td>'+formatDate(b.createdAt)+'</td><td>'+formatSize(b.size)+'</td><td>'+readCell+delCell+'</td></tr>';
+    wrap.innerHTML = books.map(b => {
+      const delLink = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
+      return '<div class="lib-card">' +
+        '<div class="lib-top"><span class="lib-title">'+escapeHtml(b.title)+'</span><span class="lib-author">'+escapeHtml(b.author)+'</span></div>' +
+        '<div class="lib-meta"><span>'+formatDate(b.createdAt)+' &middot; '+formatSize(b.size)+'</span>' +
+        '<span><a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>'+delLink+'</span></div>' +
+        '</div>';
     }).join('');
-    wrap.innerHTML = '<table><tr><th>Title</th><th>Author</th><th>Date</th><th>Size</th><th>Action</th></tr>'+rows+'</table>';
   }catch(e){
     wrap.innerHTML = '<div class="empty">Could not load the library.</div>';
   }
