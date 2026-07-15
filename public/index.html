@@ -55,11 +55,11 @@
   h2.form-title{font-family:'Fraunces',serif;font-weight:500;font-size:24px;margin:0 0 4px;}
   p.form-sub{font-size:13px;color:var(--text-mute);margin:0 0 24px;}
   label{display:block;font-size:12px;font-weight:600;color:var(--text-mute);margin:16px 0 6px;letter-spacing:0.3px;}
-  input[type=text],input[type=email],input[type=password]{
+  input[type=text],input[type=email],input[type=password],select{
     width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;
     font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--text-dark);
   }
-  input:focus{outline:2px solid var(--brass);outline-offset:1px;}
+  input:focus,select:focus{outline:2px solid var(--brass);outline-offset:1px;}
   .role-picker{display:flex;gap:10px;margin-top:6px;}
   .role-opt{flex:1;border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;cursor:pointer;font-size:13px;background:#fff;color:var(--text-mute);}
   .role-opt.selected{border-color:var(--moss);background:#EEF3EC;color:var(--moss-dark);font-weight:600;}
@@ -200,7 +200,36 @@
           <label for="suEmail">Email</label>
           <input type="email" id="suEmail" placeholder="name@ritb.edu">
           <label for="suClass">Class / department <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
-          <input type="text" id="suClass" placeholder="e.g. CSE - 3rd Year">
+          <select id="suClass" onchange="handleClassSelectChange()">
+            <option value="">— select —</option>
+            <optgroup label="BE">
+              <option value="BE 1st Sem - CSE">BE 1st Sem - CSE</option>
+              <option value="BE 1st Sem - ISE">BE 1st Sem - ISE</option>
+              <option value="BE 1st Sem - CS">BE 1st Sem - CS</option>
+              <option value="BE 1st Sem - DS">BE 1st Sem - DS</option>
+              <option value="BE 1st Sem - ECE">BE 1st Sem - ECE</option>
+              <option value="BE 3rd Sem - CSE">BE 3rd Sem - CSE</option>
+              <option value="BE 3rd Sem - ISE">BE 3rd Sem - ISE</option>
+              <option value="BE 3rd Sem - CS">BE 3rd Sem - CS</option>
+              <option value="BE 3rd Sem - DS">BE 3rd Sem - DS</option>
+              <option value="BE 3rd Sem - ECE">BE 3rd Sem - ECE</option>
+            </optgroup>
+            <optgroup label="BCA">
+              <option value="BCA 1st Sem">BCA 1st Sem</option>
+              <option value="BCA 5th Sem">BCA 5th Sem</option>
+            </optgroup>
+            <optgroup label="MBA">
+              <option value="MBA 2nd Sem">MBA 2nd Sem</option>
+              <option value="MBA 4th Sem">MBA 4th Sem</option>
+            </optgroup>
+            <optgroup label="MCA">
+              <option value="MCA 4th Sem">MCA 4th Sem</option>
+            </optgroup>
+            <option value="__other__">Other (type manually)</option>
+          </select>
+          <div id="suClassOtherWrap" style="display:none;margin-top:10px;">
+            <input type="text" id="suClassOther" placeholder="Type your class / department">
+          </div>
           <label>I am a</label>
           <div class="role-picker">
             <div class="role-opt selected" id="roleStudent" onclick="pickRole('student')">Student</div>
@@ -416,6 +445,11 @@ function switchTab(tab){
 }
 
 let selectedRole = 'student';
+function handleClassSelectChange(){
+  const val = document.getElementById('suClass').value;
+  document.getElementById('suClassOtherWrap').style.display = val === '__other__' ? 'block' : 'none';
+}
+
 function pickRole(role){
   selectedRole = role;
   document.getElementById('roleStudent').classList.toggle('selected', role==='student');
@@ -444,7 +478,8 @@ async function handleSignup(){
   clearMsg('signupMsg');
   const name = document.getElementById('suName').value.trim();
   const email = document.getElementById('suEmail').value.trim();
-  const cls = document.getElementById('suClass').value.trim();
+  const classSelect = document.getElementById('suClass').value;
+  const cls = classSelect === '__other__' ? document.getElementById('suClassOther').value.trim() : classSelect;
   const password = document.getElementById('suPassword').value;
   const confirm = document.getElementById('suConfirm').value;
   const adminCode = document.getElementById('suAdminCode').value.trim();
