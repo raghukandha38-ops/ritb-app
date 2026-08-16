@@ -484,7 +484,7 @@ const CHATBOT_FAQ = [
     answer: "To sign up, click 'Sign up' on the login screen, fill in your name, email, class/department, and a password. Students can sign up freely. Faculty and Admin need an invite code from the site administrator."
   },
   {
-    keywords: ['forgot password', 'reset password', 'locked out', "can't log in", 'cant log in', 'lost my password'],
+    keywords: ['password', 'forgot password', 'reset password', 'locked out', "can't log in", 'cant log in', 'lost my password', 'change password'],
     answer: "If you're logged in, you can change your password anytime from the 'Change your password' section on your dashboard. If you're locked out: students should ask their Faculty/Admin to reset it from their dashboard, and Admins can ask another Admin to reset theirs."
   },
   {
@@ -492,19 +492,19 @@ const CHATBOT_FAQ = [
     answer: "Faculty and Admin accounts can upload a book from their dashboard: enter the title, author, and choose a file (PDF, EPUB, DOC, DOCX, or TXT). You can also add a book as a link to a free book hosted elsewhere instead of uploading a file."
   },
   {
-    keywords: ['read', 'reader', 'open a book', 'open book', 'page'],
+    keywords: ['read', 'reader', 'open a book', 'open book', 'page', 'pages'],
     answer: "Click 'Read' on any book in the Library. PDFs open in the built-in reader with Previous/Next buttons, and it automatically remembers the last page you were on."
   },
   {
-    keywords: ['dictionary', 'meaning', 'define', 'definition', 'word'],
+    keywords: ['dictionary', 'meaning', 'mean', 'define', 'definition', 'word meaning', 'look up a word'],
     answer: "While reading a PDF in the app, double-click any word to see its meaning in a small popup — no need to leave the page."
   },
   {
-    keywords: ['badge', 'streak', 'milestone'],
+    keywords: ['badge', 'badges', 'streak', 'streaks', 'milestone', 'milestones'],
     answer: "You earn badges automatically for reading streaks (3, 7, 14, 30 days) and page milestones (100, 500, 1000, 2500 pages). Check your dashboard to see which ones you've unlocked."
   },
   {
-    keywords: ['leaderboard', 'rank', 'top reader', 'ranking'],
+    keywords: ['leaderboard', 'rank', 'ranking', 'top reader', 'top readers'],
     answer: "The leaderboard shows the top 5 readers by total pages read, with a podium for the top 3. If you're not in the top 5, your own rank still shows below the list."
   },
   {
@@ -512,7 +512,7 @@ const CHATBOT_FAQ = [
     answer: "Your 'Currently reading' section shows a progress bar for each book you've started, with a 'Continue reading' button that jumps back to your last page."
   },
   {
-    keywords: ['faculty', 'admin', 'role', 'student account', 'account type'],
+    keywords: ['faculty', 'admin', 'role', 'roles', 'student account', 'account type'],
     answer: "There are three account types: Student (reads and tracks progress), Faculty (can upload/manage books), and Admin (everything Faculty can do, plus managing the student roster and resetting passwords)."
   },
   {
@@ -525,6 +525,23 @@ const CHATBOT_FAQ = [
   }
 ];
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Scores a keyword phrase against a message: every word in the phrase must
+// appear as a whole word somewhere in the message (not necessarily adjacent,
+// and not as a substring of a longer word - e.g. "word" must not match
+// inside "password"). Longer, more specific phrases score higher.
+function keywordScore(msg, keyword) {
+  const words = keyword.split(' ');
+  for (const w of words) {
+    const re = new RegExp('\\b' + escapeRegex(w) + '\\b', 'i');
+    if (!re.test(msg)) return 0;
+  }
+  return words.length;
+}
+
 function matchFAQ(message) {
   const msg = message.toLowerCase();
   let best = null;
@@ -532,7 +549,7 @@ function matchFAQ(message) {
   for (const entry of CHATBOT_FAQ) {
     let score = 0;
     for (const kw of entry.keywords) {
-      if (msg.includes(kw)) score++;
+      score += keywordScore(msg, kw);
     }
     if (score > bestScore) {
       bestScore = score;
