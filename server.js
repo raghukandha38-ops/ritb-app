@@ -178,51 +178,6 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-app.get('/api/logs', authMiddleware, async (req, res) => {
-  const logs = await Log.find({ userEmail: req.user.email }).sort({ date: -1 });
-  res.json({ logs });
-});
-
-app.post('/api/logs', authMiddleware, async (req, res) => {
-  const book = (req.body.book || '').trim();
-  const pages = Number(req.body.pages);
-  const date = (req.body.date || '').trim() || new Date().toISOString().slice(0, 10);
-
-  if (!book || !pages || isNaN(pages) || pages <= 0) {
-    return res.status(400).json({ error: 'Enter a book title and a valid page count.' });
-  }
-  const log = await Log.create({ userEmail: req.user.email, book, pages, date });
-  res.json({ log });
-});
-
-async function computeStudentStats() {
-  const students = await User.find({ role: 'student' });
-  const today = new Date().toISOString().slice(0, 10);
-  const results = [];
-
-  for (const s of students) {
-    const logs = await Log.find({ userEmail: s.email });
-    const pages = logs.reduce((sum, l) => sum + l.pages, 0);
-    const progresses = await Progress.find({ userEmail: s.email });
-    const readingMinutes = progresses.reduce((sum, p) => sum + p.minutesReading, 0);
-    const activity = await ActivityDay.findOne({ userEmail: s.email, date: today });
-
-    results.push({
-      name: s.name,
-      email: s.email,
-      cls: s.cls,
-      streak: computeStreak(logs.map(l => l.date)),
-      sessions: logs.length,
-      pages,
-      readingMinutes: Math.round(readingMinutes),
-      activeMinutesToday: activity ? Math.round(activity.minutes) : 0
-    });
-  }
-
-  results.sort((a, b) => b.pages - a.pages);
-  return results;
-}
-
 app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
   try {
     const currentPassword = req.body.currentPassword || '';
@@ -284,6 +239,34 @@ app.post('/api/auth/emergency-reset', async (req, res) => {
   }
 });
 
+async function computeStudentStats() {
+  const students = await User.find({ role: 'student' });
+  const today = new Date().toISOString().slice(0, 10);
+  const results = [];
+
+  for (const s of students) {
+    const logs = await Log.find({ userEmail: s.email });
+    const pages = logs.reduce((sum, l) => sum + l.pages, 0);
+    const progresses = await Progress.find({ userEmail: s.email });
+    const readingMinutes = progresses.reduce((sum, p) => sum + p.minutesReading, 0);
+    const activity = await ActivityDay.findOne({ userEmail: s.email, date: today });
+
+    results.push({
+      name: s.name,
+      email: s.email,
+      cls: s.cls,
+      streak: computeStreak(logs.map(l => l.date)),
+      sessions: logs.length,
+      pages,
+      readingMinutes: Math.round(readingMinutes),
+      activeMinutesToday: activity ? Math.round(activity.minutes) : 0
+    });
+  }
+
+  results.sort((a, b) => b.pages - a.pages);
+  return results;
+}
+
 app.get('/api/roster', authMiddleware, adminOnly, async (req, res) => {
   const stats = await computeStudentStats();
   const totalPages = stats.reduce((sum, s) => sum + s.pages, 0);
@@ -302,6 +285,23 @@ app.get('/api/leaderboard', authMiddleware, async (req, res) => {
     if (idx >= 0) mine = { rank: idx + 1, pages: stats[idx].pages, streak: stats[idx].streak };
   }
   res.json({ top5, mine });
+});
+
+app.get('/api/logs', authMiddleware, async (req, res) => {
+  const logs = await Log.find({ userEmail: req.user.email }).sort({ date: -1 });
+  res.json({ logs });
+});
+
+app.post('/api/logs', authMiddleware, async (req, res) => {
+  const book = (req.body.book || '').trim();
+  const pages = Number(req.body.pages);
+  const date = (req.body.date || '').trim() || new Date().toISOString().slice(0, 10);
+
+  if (!book || !pages || isNaN(pages) || pages <= 0) {
+    return res.status(400).json({ error: 'Enter a book title and a valid page count.' });
+  }
+  const log = await Log.create({ userEmail: req.user.email, book, pages, date });
+  res.json({ log });
 });
 
 app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), async (req, res) => {
@@ -329,7 +329,8 @@ app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), as
         contentType: req.file.mimetype,
         fileId: uploadStream.id,
         size: req.file.size,
-        uploadedBy: req.user.email
+        uploadedBy: req.user.email,
+        sourceType: 'upload'
       });
       res.json({ book: { id: book._id, title: book.title, author: book.author, filename: book.filename, size: book.size, createdAt: book.createdAt } });
     });
@@ -343,12 +344,35 @@ app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), as
   }
 });
 
+app.post('/api/books/link', authMiddleware, facultyOrAdmin, async (req, res) => {
+  try {
+    const title = (req.body.title || '').trim();
+    const author = (req.body.author || '').trim();
+    const url = (req.body.url || '').trim();
+    if (!title || !author || !url) {
+      return res.status(400).json({ error: 'Enter a title, author, and link.' });
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'Link must start with http:// or https://' });
+    }
+    const book = await Book.create({
+      title, author, uploadedBy: req.user.email,
+      sourceType: 'link', externalUrl: url
+    });
+    res.json({ book: { id: book._id, title: book.title, author: book.author, createdAt: book.createdAt } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Could not add that link.' });
+  }
+});
+
 app.get('/api/books', authMiddleware, async (req, res) => {
   const books = await Book.find().sort({ createdAt: -1 });
   res.json({
     books: books.map(b => ({
       id: b._id, title: b.title, author: b.author, filename: b.filename,
-      size: b.size, createdAt: b.createdAt, uploadedBy: b.uploadedBy
+      size: b.size, createdAt: b.createdAt, uploadedBy: b.uploadedBy,
+      sourceType: b.sourceType, externalUrl: b.externalUrl
     }))
   });
 });
@@ -357,6 +381,7 @@ app.get('/api/books/:id/file', authMiddleware, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ error: 'Book not found.' });
+    if (book.sourceType === 'link') return res.status(400).json({ error: 'This book is an external link, not a stored file.' });
     res.set('Content-Type', book.contentType);
     res.set('Content-Disposition', 'inline; filename="' + book.filename.replace(/"/g, '') + '"');
     gfsBucket.openDownloadStream(book.fileId)
@@ -371,7 +396,9 @@ app.delete('/api/books/:id', authMiddleware, facultyOrAdmin, async (req, res) =>
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ error: 'Book not found.' });
-    await gfsBucket.delete(book.fileId).catch(() => {});
+    if (book.sourceType === 'upload' && book.fileId) {
+      await gfsBucket.delete(book.fileId).catch(() => {});
+    }
     await book.deleteOne();
     res.json({ ok: true });
   } catch (e) {
@@ -449,6 +476,125 @@ app.post('/api/activity/heartbeat', authMiddleware, async (req, res) => {
     { upsert: true }
   );
   res.json({ ok: true });
+});
+
+const CHATBOT_FAQ = [
+  {
+    keywords: ['sign up', 'signup', 'create account', 'register', 'registration'],
+    answer: "To sign up, click 'Sign up' on the login screen, fill in your name, email, class/department, and a password. Students can sign up freely. Faculty and Admin need an invite code from the site administrator."
+  },
+  {
+    keywords: ['forgot password', 'reset password', 'locked out', "can't log in", 'cant log in', 'lost my password'],
+    answer: "If you're logged in, you can change your password anytime from the 'Change your password' section on your dashboard. If you're locked out: students should ask their Faculty/Admin to reset it from their dashboard, and Admins can ask another Admin to reset theirs."
+  },
+  {
+    keywords: ['upload', 'add a book', 'add book', 'new book'],
+    answer: "Faculty and Admin accounts can upload a book from their dashboard: enter the title, author, and choose a file (PDF, EPUB, DOC, DOCX, or TXT). You can also add a book as a link to a free book hosted elsewhere instead of uploading a file."
+  },
+  {
+    keywords: ['read', 'reader', 'open a book', 'open book', 'page'],
+    answer: "Click 'Read' on any book in the Library. PDFs open in the built-in reader with Previous/Next buttons, and it automatically remembers the last page you were on."
+  },
+  {
+    keywords: ['dictionary', 'meaning', 'define', 'definition', 'word'],
+    answer: "While reading a PDF in the app, double-click any word to see its meaning in a small popup — no need to leave the page."
+  },
+  {
+    keywords: ['badge', 'streak', 'milestone'],
+    answer: "You earn badges automatically for reading streaks (3, 7, 14, 30 days) and page milestones (100, 500, 1000, 2500 pages). Check your dashboard to see which ones you've unlocked."
+  },
+  {
+    keywords: ['leaderboard', 'rank', 'top reader', 'ranking'],
+    answer: "The leaderboard shows the top 5 readers by total pages read, with a podium for the top 3. If you're not in the top 5, your own rank still shows below the list."
+  },
+  {
+    keywords: ['progress', 'currently reading'],
+    answer: "Your 'Currently reading' section shows a progress bar for each book you've started, with a 'Continue reading' button that jumps back to your last page."
+  },
+  {
+    keywords: ['faculty', 'admin', 'role', 'student account', 'account type'],
+    answer: "There are three account types: Student (reads and tracks progress), Faculty (can upload/manage books), and Admin (everything Faculty can do, plus managing the student roster and resetting passwords)."
+  },
+  {
+    keywords: ['link', 'external', 'online book', 'ndli', 'openstax'],
+    answer: "Faculty/Admin can add a book as a link to a free book hosted elsewhere (like NDLI or OpenStax) instead of uploading a file. It'll show an 'External' tag and open the original site when read."
+  },
+  {
+    keywords: ['what can you do', 'help', 'what is ritb', 'about ritb'],
+    answer: "I can help with things like: signing up and logging in, uploading books, using the in-app reader, the dictionary, badges and streaks, the leaderboard, and password resets. What would you like to know?"
+  }
+];
+
+function matchFAQ(message) {
+  const msg = message.toLowerCase();
+  let best = null;
+  let bestScore = 0;
+  for (const entry of CHATBOT_FAQ) {
+    let score = 0;
+    for (const kw of entry.keywords) {
+      if (msg.includes(kw)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = entry;
+    }
+  }
+  return best ? best.answer : null;
+}
+
+app.post('/api/chatbot', authMiddleware, async (req, res) => {
+  const message = (req.body.message || '').trim();
+  if (!message) return res.status(400).json({ error: 'Type a message first.' });
+
+  const faqAnswer = matchFAQ(message);
+  if (faqAnswer) {
+    return res.json({ reply: faqAnswer, source: 'faq' });
+  }
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const history = Array.isArray(req.body.history) ? req.body.history.slice(-6) : [];
+      const messages = history
+        .filter(h => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
+        .map(h => ({ role: h.role, content: h.content.slice(0, 1000) }));
+      messages.push({ role: 'user', content: message.slice(0, 1000) });
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          system: 'You are the RITB Reading Assistant, a friendly helper inside a college reading-habit app called RITB. ' +
+            'Help students, faculty, and admins with questions about reading, books, study habits, or using the app. ' +
+            'Keep answers short (2-4 sentences), warm, and practical. If asked something unrelated to reading, books, ' +
+            'studying, or the app, gently redirect back to what you can help with.',
+          messages
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        const textBlock = (data.content || []).find(c => c.type === 'text');
+        if (textBlock && textBlock.text) {
+          return res.json({ reply: textBlock.text.trim(), source: 'ai' });
+        }
+      } else {
+        console.error('Anthropic API error status:', resp.status);
+      }
+    } catch (e) {
+      console.error('Chatbot AI error:', e.message);
+    }
+  }
+
+  return res.json({
+    reply: "I don't have an answer for that yet. I can help with signing up, uploading books, the reader, the dictionary, badges, the leaderboard, or password resets. For anything else, please contact your Faculty/Admin.",
+    source: 'fallback'
+  });
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
