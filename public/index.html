@@ -93,14 +93,13 @@
   tr:last-child td{border-bottom:none;}
   .empty{color:var(--text-mute);font-size:13px;padding:18px;text-align:center;}
   .badges{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;}
-  .badge{background:var(--bg-accent,#EEF3EC);background:#EEF3EC;border:1px solid var(--moss);color:var(--moss-dark);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;}
+  .badge{background:#EEF3EC;border:1px solid var(--moss);color:var(--moss-dark);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;}
   .badge.gold{background:#FBF1DC;border-color:var(--brass);color:var(--brass-dark);}
   .leader-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--paper-2);}
   .leader-row:first-child{border-radius:10px 10px 0 0;}
   .leader-row:last-child{border-bottom:none;border-radius:0 0 10px 10px;}
   .leader-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;}
   .leader-rank{font-family:'Fraunces',serif;font-size:16px;width:24px;color:var(--text-mute);}
-  .leader-rank.top{color:var(--brass-dark);}
   .leader-name{flex:1;font-size:14px;}
   .leader-name .cls{color:var(--text-mute);font-size:12px;display:block;}
   .leader-pages{font-size:14px;font-weight:600;color:var(--ink-700);}
@@ -128,6 +127,7 @@
   .lib-card{background:var(--paper-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
   .lib-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
   .lib-title{font-weight:600;font-size:14px;}
+  .lib-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--moss-dark);background:#EEF3EC;border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:2px;}
   .lib-author{color:var(--text-mute);font-size:12px;white-space:nowrap;}
   .lib-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-mute);margin-top:10px;}
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(16,24,38,0.75);z-index:900;align-items:center;justify-content:center;padding:20px;}
@@ -148,26 +148,31 @@
   .icon-btn:hover{background:#213249;}
   .reader-hint{color:#9FB0C4;font-size:12px;margin-top:10px;}
   .pdf-page-wrap{position:relative;}
-  .textLayer{
-    position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;
-    line-height:1;text-align:initial;transform-origin:0 0;
-  }
-  .textLayer span, .textLayer br{
-    color:transparent;position:absolute;white-space:pre;cursor:text;
-    transform-origin:0% 0%;
-  }
-  .textLayer ::selection{ background:rgba(184,134,59,0.4); }
-  .word-popover{
-    position:fixed;z-index:1000;max-width:280px;background:var(--paper-2);
-    border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.35);
-    padding:14px 16px;font-family:'Inter',sans-serif;color:var(--text-dark);
-  }
+  .textLayer{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;line-height:1;text-align:initial;transform-origin:0 0;}
+  .textLayer span, .textLayer br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%;}
+  .textLayer ::selection{background:rgba(184,134,59,0.4);}
+  .word-popover{position:fixed;z-index:1000;max-width:280px;background:var(--paper-2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.35);padding:14px 16px;font-family:'Inter',sans-serif;color:var(--text-dark);}
   .word-popover .wp-word{font-family:'Fraunces',serif;font-size:17px;font-weight:600;}
   .word-popover .wp-phonetic{color:var(--text-mute);font-size:12px;margin-left:6px;}
   .word-popover .wp-pos{color:var(--moss-dark);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-top:8px;}
   .word-popover .wp-def{font-size:13px;margin-top:2px;line-height:1.4;}
   .word-popover .wp-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text-mute);font-size:14px;background:none;border:none;}
   .word-popover .wp-empty{font-size:13px;color:var(--text-mute);}
+  .chat-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--brass);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:800;font-size:24px;}
+  .chat-fab:hover{background:var(--brass-dark);}
+  .chat-panel{display:none;position:fixed;bottom:90px;right:24px;width:340px;max-width:calc(100vw - 32px);height:460px;max-height:calc(100vh - 130px);background:var(--paper-2);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);z-index:800;flex-direction:column;overflow:hidden;}
+  .chat-panel.show{display:flex;}
+  .chat-head{background:var(--ink-700);color:var(--paper-2);padding:14px 16px;font-family:'Fraunces',serif;font-size:15px;display:flex;justify-content:space-between;align-items:center;}
+  .chat-head button{background:transparent;border:none;color:#CBD6E4;cursor:pointer;font-size:18px;}
+  .chat-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+  .chat-msg{max-width:85%;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.4;}
+  .chat-msg.user{align-self:flex-end;background:var(--brass);color:#fff;}
+  .chat-msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--border);color:var(--text-dark);}
+  .chat-msg.typing{align-self:flex-start;color:var(--text-mute);font-style:italic;}
+  .chat-input-row{display:flex;border-top:1px solid var(--border);padding:10px;gap:8px;}
+  .chat-input-row input{flex:1;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;}
+  .chat-input-row button{padding:9px 14px;border:none;border-radius:8px;background:var(--brass);color:#fff;font-size:13px;cursor:pointer;}
+  .chat-input-row button:hover{background:var(--brass-dark);}
   @media(max-width:820px){ .wrap{flex-direction:column;} .brand-panel{padding:36px 28px;} .shelf{height:70px;} }
 </style>
 </head>
@@ -331,6 +336,15 @@
       <input type="file" id="bookFile" accept=".pdf,.epub,.doc,.docx,.txt">
       <button class="btn" style="max-width:220px;" onclick="handleUploadBook('admin')">Upload</button>
       <div id="uploadMsg"></div>
+      <p class="hint" style="text-align:left;margin-top:16px;">Or link to a free book hosted elsewhere (NDLI, OpenStax, etc.) instead of uploading a file:</p>
+      <div class="row">
+        <div><label for="linkTitle_a">Book title</label><input type="text" id="linkTitle_a" placeholder="Book title"></div>
+        <div><label for="linkAuthor_a">Author</label><input type="text" id="linkAuthor_a" placeholder="Author"></div>
+      </div>
+      <label for="linkUrl_a">Link (https://...)</label>
+      <input type="text" id="linkUrl_a" placeholder="https://ndl.iitkgp.ac.in/...">
+      <button class="btn" style="max-width:220px;" onclick="handleAddBookLink('admin')">Add link</button>
+      <div id="linkMsg_a"></div>
     </div>
     <p class="section-title">Library</p>
     <div id="adminLibraryWrap"></div>
@@ -368,6 +382,15 @@
       <input type="file" id="facBookFile" accept=".pdf,.epub,.doc,.docx,.txt">
       <button class="btn" style="max-width:220px;" onclick="handleUploadBook('faculty')">Upload</button>
       <div id="facUploadMsg"></div>
+      <p class="hint" style="text-align:left;margin-top:16px;">Or link to a free book hosted elsewhere (NDLI, OpenStax, etc.) instead of uploading a file:</p>
+      <div class="row">
+        <div><label for="linkTitle_f">Book title</label><input type="text" id="linkTitle_f" placeholder="Book title"></div>
+        <div><label for="linkAuthor_f">Author</label><input type="text" id="linkAuthor_f" placeholder="Author"></div>
+      </div>
+      <label for="linkUrl_f">Link (https://...)</label>
+      <input type="text" id="linkUrl_f" placeholder="https://ndl.iitkgp.ac.in/...">
+      <button class="btn" style="max-width:220px;" onclick="handleAddBookLink('faculty')">Add link</button>
+      <div id="linkMsg_f"></div>
     </div>
     <p class="section-title">Library</p>
     <div id="facultyLibraryWrap"></div>
@@ -420,6 +443,19 @@
   </div>
 </div>
 
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" style="display:none;" title="RITB Assistant">&#128172;</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <span>RITB Assistant</span>
+    <button onclick="toggleChat()">&times;</button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask me anything about RITB..." onkeydown="if(event.key==='Enter')sendChatMessage();">
+    <button onclick="sendChatMessage()">Send</button>
+  </div>
+</div>
+
 <script>
 const TOKEN_KEY = 'ritb_token';
 let currentUser = null;
@@ -456,12 +492,12 @@ function switchTab(tab){
   document.getElementById('signupForm').style.display = tab==='signup' ? 'block':'none';
 }
 
-let selectedRole = 'student';
 function handleClassSelectChange(){
   const val = document.getElementById('suClass').value;
   document.getElementById('suClassOtherWrap').style.display = val === '__other__' ? 'block' : 'none';
 }
 
+let selectedRole = 'student';
 function pickRole(role){
   selectedRole = role;
   document.getElementById('roleStudent').classList.toggle('selected', role==='student');
@@ -475,6 +511,11 @@ function showMsg(elId, text, type){
   document.getElementById(elId).innerHTML = '<div class="msg '+type+'">'+text+'</div>';
 }
 function clearMsg(elId){ document.getElementById(elId).innerHTML = ''; }
+
+function showForgotInfo(){
+  document.getElementById('forgotInfo').innerHTML =
+    '<div class="msg ok">Students: ask your faculty/admin to reset your password from their dashboard. Faculty/Admin: ask another admin to reset yours from their Admin accounts list.</div>';
+}
 
 async function api(path, options={}){
   const token = localStorage.getItem(TOKEN_KEY);
@@ -513,11 +554,6 @@ async function handleSignup(){
   btn.disabled = false; btn.textContent = 'Create account';
 }
 
-function showForgotInfo(){
-  document.getElementById('forgotInfo').innerHTML =
-    '<div class="msg ok">Students: ask your faculty/admin to reset your password from their dashboard. Faculty/Admin: ask another admin to reset yours from their Admin accounts list.</div>';
-}
-
 async function handleLogin(){
   clearMsg('loginMsg');
   const email = document.getElementById('loginEmail').value.trim();
@@ -553,12 +589,16 @@ function handleLogout(){
   document.getElementById('authWrap').style.display = 'flex';
   document.getElementById('loginEmail').value = '';
   document.getElementById('loginPassword').value = '';
+  document.getElementById('chatFab').style.display = 'none';
+  document.getElementById('chatPanel').classList.remove('show');
 }
 
 async function enterApp(user){
   currentUser = user;
   document.getElementById('authWrap').style.display = 'none';
   startAppHeartbeat();
+  document.getElementById('chatFab').style.display = 'flex';
+  initChat();
   if(user.role === 'admin'){
     document.getElementById('adminName').textContent = 'Welcome, ' + user.name;
     document.getElementById('adminDash').classList.add('show');
@@ -580,6 +620,18 @@ async function enterApp(user){
     await renderLeaderboard('leaderboardWrap');
   }
 }
+
+function computeStreak(dates){
+  const set = new Set(dates);
+  let streak = 0;
+  const d = new Date();
+  while(true){
+    const key = d.toISOString().slice(0,10);
+    if(set.has(key)){ streak++; d.setDate(d.getDate()-1); } else break;
+  }
+  return streak;
+}
+function computeStreakClient(dates){ return computeStreak(dates); }
 
 async function renderStudentDash(){
   const { logs } = await api('/api/logs');
@@ -831,33 +883,69 @@ async function handleChangePassword(suffix){
   }
 }
 
-function computeStreakClient(dates){
-  const set = new Set(dates);
-  let streak = 0;
-  const d = new Date();
-  while(true){
-    const key = d.toISOString().slice(0,10);
-    if(set.has(key)){ streak++; d.setDate(d.getDate()-1); } else break;
+async function handleUploadBook(who){
+  const titleId = who === 'faculty' ? 'facBookTitle' : 'bookTitle';
+  const authorId = who === 'faculty' ? 'facBookAuthor' : 'bookAuthor';
+  const fileId = who === 'faculty' ? 'facBookFile' : 'bookFile';
+  const msgId = who === 'faculty' ? 'facUploadMsg' : 'uploadMsg';
+  const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
+
+  clearMsg(msgId);
+  const title = document.getElementById(titleId).value.trim();
+  const author = document.getElementById(authorId).value.trim();
+  const fileInput = document.getElementById(fileId);
+  const file = fileInput.files[0];
+  if(!title || !author || !file){
+    showMsg(msgId,'Enter a title, author, and choose a file.','err'); return;
   }
-  return streak;
-}
+  const form = new FormData();
+  form.append('title', title);
+  form.append('author', author);
+  form.append('file', file);
 
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str == null ? '' : str;
-  return d.innerHTML;
-}
-
-function fileLink(bookId){
   const token = localStorage.getItem(TOKEN_KEY);
-  return '/api/books/' + bookId + '/file?token=' + encodeURIComponent(token);
+  try{
+    const res = await fetch('/api/books', {
+      method:'POST',
+      headers: { 'Authorization':'Bearer '+token },
+      body: form
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || 'Upload failed.');
+    document.getElementById(titleId).value = '';
+    document.getElementById(authorId).value = '';
+    fileInput.value = '';
+    showMsg(msgId,'Book uploaded.','ok');
+    await renderLibrary(libWrapId, true);
+  }catch(e){
+    showMsg(msgId, e.message, 'err');
+  }
 }
 
-function formatSize(bytes){
-  if(!bytes) return '';
-  const kb = bytes / 1024;
-  if(kb < 1024) return Math.round(kb) + ' KB';
-  return (kb/1024).toFixed(1) + ' MB';
+async function handleAddBookLink(who){
+  const titleId = who === 'faculty' ? 'linkTitle_f' : 'linkTitle_a';
+  const authorId = who === 'faculty' ? 'linkAuthor_f' : 'linkAuthor_a';
+  const urlId = who === 'faculty' ? 'linkUrl_f' : 'linkUrl_a';
+  const msgId = who === 'faculty' ? 'linkMsg_f' : 'linkMsg_a';
+  const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
+
+  clearMsg(msgId);
+  const title = document.getElementById(titleId).value.trim();
+  const author = document.getElementById(authorId).value.trim();
+  const url = document.getElementById(urlId).value.trim();
+
+  try{
+    await api('/api/books/link', {
+      method:'POST', body: JSON.stringify({ title, author, url })
+    });
+    document.getElementById(titleId).value = '';
+    document.getElementById(authorId).value = '';
+    document.getElementById(urlId).value = '';
+    showMsg(msgId,'Link added.','ok');
+    await renderLibrary(libWrapId, true);
+  }catch(e){
+    showMsg(msgId, e.message, 'err');
+  }
 }
 
 async function renderLibrary(wrapId, isAdmin){
@@ -872,10 +960,16 @@ async function renderLibrary(wrapId, isAdmin){
     }
     wrap.innerHTML = books.map(b => {
       const delLink = isAdmin ? ' &middot; <a href="#" onclick="handleDeleteBook(\''+b.id+'\', \''+wrapId+'\', '+isAdmin+');return false;" style="color:var(--rust);">Remove</a>' : '';
+      const isLink = b.sourceType === 'link';
+      const readLink = isLink
+        ? '<a href="'+escapeHtml(b.externalUrl)+'" target="_blank" rel="noopener">Read</a>'
+        : '<a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>';
+      const metaRight = isLink ? 'External link' : formatSize(b.size);
+      const sourceTag = isLink ? '<span class="lib-tag">External</span>' : '';
       return '<div class="lib-card">' +
-        '<div class="lib-top"><span class="lib-title">'+escapeHtml(b.title)+'</span><span class="lib-author">'+escapeHtml(b.author)+'</span></div>' +
-        '<div class="lib-meta"><span>'+formatDate(b.createdAt)+' &middot; '+formatSize(b.size)+'</span>' +
-        '<span><a href="#" onclick="handleOpenBook(\''+b.id+'\');return false;">Read</a>'+delLink+'</span></div>' +
+        '<div class="lib-top"><span class="lib-title">'+escapeHtml(b.title)+sourceTag+'</span><span class="lib-author">'+escapeHtml(b.author)+'</span></div>' +
+        '<div class="lib-meta"><span>'+formatDate(b.createdAt)+' &middot; '+metaRight+'</span>' +
+        '<span>'+readLink+delLink+'</span></div>' +
         '</div>';
     }).join('');
   }catch(e){
@@ -888,15 +982,40 @@ function formatDate(iso){
   return new Date(iso).toISOString().slice(0,10);
 }
 
+function formatSize(bytes){
+  if(!bytes) return '';
+  const kb = bytes / 1024;
+  if(kb < 1024) return Math.round(kb) + ' KB';
+  return (kb/1024).toFixed(1) + ' MB';
+}
+
 function handleOpenBook(bookId){
   const book = libraryBooks.find(b => b.id === bookId);
   if(!book) return;
+  if(book.sourceType === 'link'){
+    window.open(book.externalUrl, '_blank');
+    return;
+  }
   const isPdf = /\.pdf$/i.test(book.filename);
   if(!isPdf){
     window.open(fileLink(bookId), '_blank');
     return;
   }
   openReader(book);
+}
+
+function fileLink(bookId){
+  const token = localStorage.getItem(TOKEN_KEY);
+  return '/api/books/' + bookId + '/file?token=' + encodeURIComponent(token);
+}
+
+async function handleDeleteBook(id, wrapId, isAdmin){
+  try{
+    await api('/api/books/'+id, { method:'DELETE' });
+    await renderLibrary(wrapId, isAdmin);
+  }catch(e){
+    alert(e.message);
+  }
 }
 
 async function openReader(book){
@@ -946,9 +1065,7 @@ async function renderPdfPage(){
       container: textLayerDiv,
       viewport: viewport
     }).promise;
-  }catch(e){
-    // text layer is optional (dictionary lookup); page still displays fine without it
-  }
+  }catch(e){}
 }
 
 function nextPdfPage(){
@@ -1071,51 +1188,62 @@ function startAppHeartbeat(){
   }, 30000);
 }
 
-async function handleUploadBook(who){
-  const titleId = who === 'faculty' ? 'facBookTitle' : 'bookTitle';
-  const authorId = who === 'faculty' ? 'facBookAuthor' : 'bookAuthor';
-  const fileId = who === 'faculty' ? 'facBookFile' : 'bookFile';
-  const msgId = who === 'faculty' ? 'facUploadMsg' : 'uploadMsg';
-  const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
-
-  clearMsg(msgId);
-  const title = document.getElementById(titleId).value.trim();
-  const author = document.getElementById(authorId).value.trim();
-  const fileInput = document.getElementById(fileId);
-  const file = fileInput.files[0];
-  if(!title || !author || !file){
-    showMsg(msgId,'Enter a title, author, and choose a file.','err'); return;
-  }
-  const form = new FormData();
-  form.append('title', title);
-  form.append('author', author);
-  form.append('file', file);
-
-  const token = localStorage.getItem(TOKEN_KEY);
-  try{
-    const res = await fetch('/api/books', {
-      method:'POST',
-      headers: { 'Authorization':'Bearer '+token },
-      body: form
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.error || 'Upload failed.');
-    document.getElementById(titleId).value = '';
-    document.getElementById(authorId).value = '';
-    fileInput.value = '';
-    showMsg(msgId,'Book uploaded.','ok');
-    await renderLibrary(libWrapId, true);
-  }catch(e){
-    showMsg(msgId, e.message, 'err');
-  }
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
 }
 
-async function handleDeleteBook(id, wrapId, isAdmin){
+let chatHistory = [];
+let chatInitialized = false;
+
+function initChat(){
+  if(chatInitialized) return;
+  chatInitialized = true;
+  const body = document.getElementById('chatBody');
+  body.innerHTML = '';
+  appendChatMsg('bot', "Hi! I'm the RITB Assistant. Ask me about signing up, uploading books, the reader, the dictionary, badges, the leaderboard, or resetting your password.");
+}
+
+function toggleChat(){
+  document.getElementById('chatPanel').classList.toggle('show');
+}
+
+function appendChatMsg(role, text){
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+async function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if(!message) return;
+  input.value = '';
+  appendChatMsg('user', message);
+  chatHistory.push({ role:'user', content: message });
+
+  const body = document.getElementById('chatBody');
+  const typing = document.createElement('div');
+  typing.className = 'chat-msg typing';
+  typing.id = 'chatTyping';
+  typing.textContent = 'Thinking...';
+  body.appendChild(typing);
+  body.scrollTop = body.scrollHeight;
+
   try{
-    await api('/api/books/'+id, { method:'DELETE' });
-    await renderLibrary(wrapId, isAdmin);
+    const data = await api('/api/chatbot', {
+      method:'POST', body: JSON.stringify({ message, history: chatHistory.slice(-6) })
+    });
+    document.getElementById('chatTyping').remove();
+    appendChatMsg('bot', data.reply);
+    chatHistory.push({ role:'assistant', content: data.reply });
   }catch(e){
-    alert(e.message);
+    document.getElementById('chatTyping').remove();
+    appendChatMsg('bot', "Sorry, I couldn't reach the assistant just now. Please try again.");
   }
 }
 
