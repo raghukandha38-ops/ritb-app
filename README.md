@@ -55,6 +55,19 @@ students.
 Anything marked optional simply stays turned off if you don't set it — the
 app works fine without them, just without that specific feature.
 
+## New book notifications
+
+When Faculty/Admin uploads a book (file or link), they can pick which class
+it's for (or "All students"). A notification bell appears in every
+dashboard's top bar showing a badge with the count of unread notifications.
+
+Clicking the bell shows recent uploads: book title, author, who uploaded it,
+and which class it's for. Students only see notifications meant for "All
+students" or their own class.
+
+This is entirely free and in-app — no email required. If the college gets a
+domain later, this is the natural place to layer on real email alerts too.
+
 ## RITB Assistant (chatbot)
 
 Every logged-in user sees a chat bubble in the bottom-right corner. It works

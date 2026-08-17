@@ -11,6 +11,7 @@ const Log = require('./models/Log');
 const Book = require('./models/Book');
 const Progress = require('./models/Progress');
 const ActivityDay = require('./models/ActivityDay');
+const Notification = require('./models/Notification');
 
 const app = express();
 app.use(express.json());
@@ -309,6 +310,7 @@ app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), as
     if (!gfsBucket) return res.status(503).json({ error: 'Storage is not ready yet. Try again in a moment.' });
     const title = (req.body.title || '').trim();
     const author = (req.body.author || '').trim();
+    const targetClass = (req.body.targetClass || '').trim() || 'All';
     if (!title || !author) {
       return res.status(400).json({ error: 'Enter both a book title and an author.' });
     }
@@ -332,6 +334,11 @@ app.post('/api/books', authMiddleware, facultyOrAdmin, upload.single('file'), as
         uploadedBy: req.user.email,
         sourceType: 'upload'
       });
+      await Notification.create({
+        bookId: book._id, bookTitle: book.title, author: book.author,
+        uploadedByName: req.user.name, uploadedByEmail: req.user.email,
+        targetClass
+      });
       res.json({ book: { id: book._id, title: book.title, author: book.author, filename: book.filename, size: book.size, createdAt: book.createdAt } });
     });
 
@@ -349,6 +356,7 @@ app.post('/api/books/link', authMiddleware, facultyOrAdmin, async (req, res) => 
     const title = (req.body.title || '').trim();
     const author = (req.body.author || '').trim();
     const url = (req.body.url || '').trim();
+    const targetClass = (req.body.targetClass || '').trim() || 'All';
     if (!title || !author || !url) {
       return res.status(400).json({ error: 'Enter a title, author, and link.' });
     }
@@ -358,6 +366,11 @@ app.post('/api/books/link', authMiddleware, facultyOrAdmin, async (req, res) => 
     const book = await Book.create({
       title, author, uploadedBy: req.user.email,
       sourceType: 'link', externalUrl: url
+    });
+    await Notification.create({
+      bookId: book._id, bookTitle: book.title, author: book.author,
+      uploadedByName: req.user.name, uploadedByEmail: req.user.email,
+      targetClass
     });
     res.json({ book: { id: book._id, title: book.title, author: book.author, createdAt: book.createdAt } });
   } catch (e) {
@@ -612,6 +625,31 @@ app.post('/api/chatbot', authMiddleware, async (req, res) => {
     reply: "I don't have an answer for that yet. I can help with signing up, uploading books, the reader, the dictionary, badges, the leaderboard, or password resets. For anything else, please contact your Faculty/Admin.",
     source: 'fallback'
   });
+});
+
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Account not found.' });
+
+  const query = user.cls
+    ? { $or: [{ targetClass: 'All' }, { targetClass: user.cls }] }
+    : { targetClass: 'All' };
+
+  const notifications = await Notification.find(query).sort({ createdAt: -1 }).limit(30);
+  const unreadCount = notifications.filter(n => n.createdAt > user.notificationsSeenAt).length;
+
+  res.json({
+    notifications: notifications.map(n => ({
+      id: n._id, bookTitle: n.bookTitle, author: n.author,
+      uploadedByName: n.uploadedByName, targetClass: n.targetClass, createdAt: n.createdAt
+    })),
+    unreadCount
+  });
+});
+
+app.post('/api/notifications/seen', authMiddleware, async (req, res) => {
+  await User.findByIdAndUpdate(req.user.id, { notificationsSeenAt: new Date() });
+  res.json({ ok: true });
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
