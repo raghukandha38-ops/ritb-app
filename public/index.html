@@ -158,6 +158,15 @@
   .word-popover .wp-def{font-size:13px;margin-top:2px;line-height:1.4;}
   .word-popover .wp-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text-mute);font-size:14px;background:none;border:none;}
   .word-popover .wp-empty{font-size:13px;color:var(--text-mute);}
+  .bell-btn{position:relative;background:transparent;border:1px solid #3A4E6B;color:#CBD6E4;padding:8px 12px;border-radius:8px;font-size:16px;cursor:pointer;}
+  .bell-btn:hover{background:#213249;}
+  .bell-badge{position:absolute;top:-6px;right:-6px;background:var(--rust);color:#fff;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+  .notif-panel{display:none;background:var(--paper-2);border:1px solid var(--border);border-radius:10px;margin:18px 0;max-height:340px;overflow-y:auto;}
+  .notif-panel.show{display:block;}
+  .notif-item{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .notif-item:last-child{border-bottom:none;}
+  .notif-item .ni-title{font-weight:600;}
+  .notif-item .ni-meta{color:var(--text-mute);font-size:12px;margin-top:3px;}
   .chat-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--brass);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:800;font-size:24px;}
   .chat-fab:hover{background:var(--brass-dark);}
   .chat-panel{display:none;position:fixed;bottom:90px;right:24px;width:340px;max-width:calc(100vw - 32px);height:460px;max-height:calc(100vh - 130px);background:var(--paper-2);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);z-index:800;flex-direction:column;overflow:hidden;}
@@ -276,9 +285,15 @@
 <div id="studentDash" class="dash">
   <div class="topbar">
     <div><div class="name" id="stuName">&nbsp;</div><div class="role-tag">Student</div></div>
-    <button class="logout" onclick="handleLogout()">Log out</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="bell-btn" onclick="toggleNotifications()" title="Notifications">
+        &#128276;<span class="bell-badge" id="bellBadge_s" style="display:none;">0</span>
+      </button>
+      <button class="logout" onclick="handleLogout()">Log out</button>
+    </div>
   </div>
   <div class="content">
+    <div class="notif-panel" id="notifPanel_s"></div>
     <div class="grid">
       <div class="stat"><div class="num" id="stuStreak">0</div><div class="lbl">Day streak</div></div>
       <div class="stat"><div class="num" id="stuTotalPages">0</div><div class="lbl">Pages logged</div></div>
@@ -314,9 +329,15 @@
 <div id="adminDash" class="dash">
   <div class="topbar">
     <div><div class="name" id="adminName">&nbsp;</div><div class="role-tag">Admin</div></div>
-    <button class="logout" onclick="handleLogout()">Log out</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="bell-btn" onclick="toggleNotifications()" title="Notifications">
+        &#128276;<span class="bell-badge" id="bellBadge_a" style="display:none;">0</span>
+      </button>
+      <button class="logout" onclick="handleLogout()">Log out</button>
+    </div>
   </div>
   <div class="content">
+    <div class="notif-panel" id="notifPanel_a"></div>
     <div class="grid">
       <div class="stat"><div class="num" id="admStudents">0</div><div class="lbl">Registered students</div></div>
       <div class="stat"><div class="num" id="admPages">0</div><div class="lbl">Total pages read</div></div>
@@ -334,6 +355,33 @@
       </div>
       <label for="bookFile">File</label>
       <input type="file" id="bookFile" accept=".pdf,.epub,.doc,.docx,.txt">
+      <label for="bookClass">For which class / department? <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
+      <select id="bookClass">
+        <option value="All">All students</option>
+        <optgroup label="BE">
+          <option value="BE 1st Sem - CSE">BE 1st Sem - CSE</option>
+          <option value="BE 1st Sem - ISE">BE 1st Sem - ISE</option>
+          <option value="BE 1st Sem - CS">BE 1st Sem - CS</option>
+          <option value="BE 1st Sem - DS">BE 1st Sem - DS</option>
+          <option value="BE 1st Sem - ECE">BE 1st Sem - ECE</option>
+          <option value="BE 3rd Sem - CSE">BE 3rd Sem - CSE</option>
+          <option value="BE 3rd Sem - ISE">BE 3rd Sem - ISE</option>
+          <option value="BE 3rd Sem - CS">BE 3rd Sem - CS</option>
+          <option value="BE 3rd Sem - DS">BE 3rd Sem - DS</option>
+          <option value="BE 3rd Sem - ECE">BE 3rd Sem - ECE</option>
+        </optgroup>
+        <optgroup label="BCA">
+          <option value="BCA 1st Sem">BCA 1st Sem</option>
+          <option value="BCA 5th Sem">BCA 5th Sem</option>
+        </optgroup>
+        <optgroup label="MBA">
+          <option value="MBA 2nd Sem">MBA 2nd Sem</option>
+          <option value="MBA 4th Sem">MBA 4th Sem</option>
+        </optgroup>
+        <optgroup label="MCA">
+          <option value="MCA 4th Sem">MCA 4th Sem</option>
+        </optgroup>
+      </select>
       <button class="btn" style="max-width:220px;" onclick="handleUploadBook('admin')">Upload</button>
       <div id="uploadMsg"></div>
       <p class="hint" style="text-align:left;margin-top:16px;">Or link to a free book hosted elsewhere (NDLI, OpenStax, etc.) instead of uploading a file:</p>
@@ -343,6 +391,33 @@
       </div>
       <label for="linkUrl_a">Link (https://...)</label>
       <input type="text" id="linkUrl_a" placeholder="https://ndl.iitkgp.ac.in/...">
+      <label for="linkClass_a">For which class / department? <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
+      <select id="linkClass_a">
+        <option value="All">All students</option>
+        <optgroup label="BE">
+          <option value="BE 1st Sem - CSE">BE 1st Sem - CSE</option>
+          <option value="BE 1st Sem - ISE">BE 1st Sem - ISE</option>
+          <option value="BE 1st Sem - CS">BE 1st Sem - CS</option>
+          <option value="BE 1st Sem - DS">BE 1st Sem - DS</option>
+          <option value="BE 1st Sem - ECE">BE 1st Sem - ECE</option>
+          <option value="BE 3rd Sem - CSE">BE 3rd Sem - CSE</option>
+          <option value="BE 3rd Sem - ISE">BE 3rd Sem - ISE</option>
+          <option value="BE 3rd Sem - CS">BE 3rd Sem - CS</option>
+          <option value="BE 3rd Sem - DS">BE 3rd Sem - DS</option>
+          <option value="BE 3rd Sem - ECE">BE 3rd Sem - ECE</option>
+        </optgroup>
+        <optgroup label="BCA">
+          <option value="BCA 1st Sem">BCA 1st Sem</option>
+          <option value="BCA 5th Sem">BCA 5th Sem</option>
+        </optgroup>
+        <optgroup label="MBA">
+          <option value="MBA 2nd Sem">MBA 2nd Sem</option>
+          <option value="MBA 4th Sem">MBA 4th Sem</option>
+        </optgroup>
+        <optgroup label="MCA">
+          <option value="MCA 4th Sem">MCA 4th Sem</option>
+        </optgroup>
+      </select>
       <button class="btn" style="max-width:220px;" onclick="handleAddBookLink('admin')">Add link</button>
       <div id="linkMsg_a"></div>
     </div>
@@ -367,9 +442,15 @@
 <div id="facultyDash" class="dash">
   <div class="topbar">
     <div><div class="name" id="facultyName">&nbsp;</div><div class="role-tag">Faculty</div></div>
-    <button class="logout" onclick="handleLogout()">Log out</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="bell-btn" onclick="toggleNotifications()" title="Notifications">
+        &#128276;<span class="bell-badge" id="bellBadge_f" style="display:none;">0</span>
+      </button>
+      <button class="logout" onclick="handleLogout()">Log out</button>
+    </div>
   </div>
   <div class="content">
+    <div class="notif-panel" id="notifPanel_f"></div>
     <p class="section-title">Leaderboard — top readers by pages</p>
     <div id="facultyLeaderboardWrap"></div>
     <p class="section-title">Upload a book</p>
@@ -380,6 +461,33 @@
       </div>
       <label for="facBookFile">File</label>
       <input type="file" id="facBookFile" accept=".pdf,.epub,.doc,.docx,.txt">
+      <label for="facBookClass">For which class / department? <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
+      <select id="facBookClass">
+        <option value="All">All students</option>
+        <optgroup label="BE">
+          <option value="BE 1st Sem - CSE">BE 1st Sem - CSE</option>
+          <option value="BE 1st Sem - ISE">BE 1st Sem - ISE</option>
+          <option value="BE 1st Sem - CS">BE 1st Sem - CS</option>
+          <option value="BE 1st Sem - DS">BE 1st Sem - DS</option>
+          <option value="BE 1st Sem - ECE">BE 1st Sem - ECE</option>
+          <option value="BE 3rd Sem - CSE">BE 3rd Sem - CSE</option>
+          <option value="BE 3rd Sem - ISE">BE 3rd Sem - ISE</option>
+          <option value="BE 3rd Sem - CS">BE 3rd Sem - CS</option>
+          <option value="BE 3rd Sem - DS">BE 3rd Sem - DS</option>
+          <option value="BE 3rd Sem - ECE">BE 3rd Sem - ECE</option>
+        </optgroup>
+        <optgroup label="BCA">
+          <option value="BCA 1st Sem">BCA 1st Sem</option>
+          <option value="BCA 5th Sem">BCA 5th Sem</option>
+        </optgroup>
+        <optgroup label="MBA">
+          <option value="MBA 2nd Sem">MBA 2nd Sem</option>
+          <option value="MBA 4th Sem">MBA 4th Sem</option>
+        </optgroup>
+        <optgroup label="MCA">
+          <option value="MCA 4th Sem">MCA 4th Sem</option>
+        </optgroup>
+      </select>
       <button class="btn" style="max-width:220px;" onclick="handleUploadBook('faculty')">Upload</button>
       <div id="facUploadMsg"></div>
       <p class="hint" style="text-align:left;margin-top:16px;">Or link to a free book hosted elsewhere (NDLI, OpenStax, etc.) instead of uploading a file:</p>
@@ -389,6 +497,33 @@
       </div>
       <label for="linkUrl_f">Link (https://...)</label>
       <input type="text" id="linkUrl_f" placeholder="https://ndl.iitkgp.ac.in/...">
+      <label for="linkClass_f">For which class / department? <span style="font-weight:400;color:var(--text-mute);">(optional)</span></label>
+      <select id="linkClass_f">
+        <option value="All">All students</option>
+        <optgroup label="BE">
+          <option value="BE 1st Sem - CSE">BE 1st Sem - CSE</option>
+          <option value="BE 1st Sem - ISE">BE 1st Sem - ISE</option>
+          <option value="BE 1st Sem - CS">BE 1st Sem - CS</option>
+          <option value="BE 1st Sem - DS">BE 1st Sem - DS</option>
+          <option value="BE 1st Sem - ECE">BE 1st Sem - ECE</option>
+          <option value="BE 3rd Sem - CSE">BE 3rd Sem - CSE</option>
+          <option value="BE 3rd Sem - ISE">BE 3rd Sem - ISE</option>
+          <option value="BE 3rd Sem - CS">BE 3rd Sem - CS</option>
+          <option value="BE 3rd Sem - DS">BE 3rd Sem - DS</option>
+          <option value="BE 3rd Sem - ECE">BE 3rd Sem - ECE</option>
+        </optgroup>
+        <optgroup label="BCA">
+          <option value="BCA 1st Sem">BCA 1st Sem</option>
+          <option value="BCA 5th Sem">BCA 5th Sem</option>
+        </optgroup>
+        <optgroup label="MBA">
+          <option value="MBA 2nd Sem">MBA 2nd Sem</option>
+          <option value="MBA 4th Sem">MBA 4th Sem</option>
+        </optgroup>
+        <optgroup label="MCA">
+          <option value="MCA 4th Sem">MCA 4th Sem</option>
+        </optgroup>
+      </select>
       <button class="btn" style="max-width:220px;" onclick="handleAddBookLink('faculty')">Add link</button>
       <div id="linkMsg_f"></div>
     </div>
@@ -606,11 +741,13 @@ async function enterApp(user){
     await renderLibrary('adminLibraryWrap', true);
     await renderLeaderboard('adminLeaderboardWrap');
     await renderAdminAccounts();
+    await renderNotifications();
   }else if(user.role === 'faculty'){
     document.getElementById('facultyName').textContent = 'Welcome, ' + user.name;
     document.getElementById('facultyDash').classList.add('show');
     await renderLibrary('facultyLibraryWrap', true);
     await renderLeaderboard('facultyLeaderboardWrap');
+    await renderNotifications();
   }else{
     document.getElementById('stuName').textContent = 'Welcome, ' + user.name;
     document.getElementById('studentDash').classList.add('show');
@@ -618,6 +755,7 @@ async function enterApp(user){
     await renderLibrary('studentLibraryWrap', false);
     await renderCurrentlyReading();
     await renderLeaderboard('leaderboardWrap');
+    await renderNotifications();
   }
 }
 
@@ -887,12 +1025,14 @@ async function handleUploadBook(who){
   const titleId = who === 'faculty' ? 'facBookTitle' : 'bookTitle';
   const authorId = who === 'faculty' ? 'facBookAuthor' : 'bookAuthor';
   const fileId = who === 'faculty' ? 'facBookFile' : 'bookFile';
+  const classId = who === 'faculty' ? 'facBookClass' : 'bookClass';
   const msgId = who === 'faculty' ? 'facUploadMsg' : 'uploadMsg';
   const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
 
   clearMsg(msgId);
   const title = document.getElementById(titleId).value.trim();
   const author = document.getElementById(authorId).value.trim();
+  const targetClass = document.getElementById(classId).value;
   const fileInput = document.getElementById(fileId);
   const file = fileInput.files[0];
   if(!title || !author || !file){
@@ -901,6 +1041,7 @@ async function handleUploadBook(who){
   const form = new FormData();
   form.append('title', title);
   form.append('author', author);
+  form.append('targetClass', targetClass);
   form.append('file', file);
 
   const token = localStorage.getItem(TOKEN_KEY);
@@ -915,7 +1056,7 @@ async function handleUploadBook(who){
     document.getElementById(titleId).value = '';
     document.getElementById(authorId).value = '';
     fileInput.value = '';
-    showMsg(msgId,'Book uploaded.','ok');
+    showMsg(msgId,'Book uploaded. Students will see a notification.','ok');
     await renderLibrary(libWrapId, true);
   }catch(e){
     showMsg(msgId, e.message, 'err');
@@ -926,6 +1067,7 @@ async function handleAddBookLink(who){
   const titleId = who === 'faculty' ? 'linkTitle_f' : 'linkTitle_a';
   const authorId = who === 'faculty' ? 'linkAuthor_f' : 'linkAuthor_a';
   const urlId = who === 'faculty' ? 'linkUrl_f' : 'linkUrl_a';
+  const classId = who === 'faculty' ? 'linkClass_f' : 'linkClass_a';
   const msgId = who === 'faculty' ? 'linkMsg_f' : 'linkMsg_a';
   const libWrapId = who === 'faculty' ? 'facultyLibraryWrap' : 'adminLibraryWrap';
 
@@ -933,15 +1075,16 @@ async function handleAddBookLink(who){
   const title = document.getElementById(titleId).value.trim();
   const author = document.getElementById(authorId).value.trim();
   const url = document.getElementById(urlId).value.trim();
+  const targetClass = document.getElementById(classId).value;
 
   try{
     await api('/api/books/link', {
-      method:'POST', body: JSON.stringify({ title, author, url })
+      method:'POST', body: JSON.stringify({ title, author, url, targetClass })
     });
     document.getElementById(titleId).value = '';
     document.getElementById(authorId).value = '';
     document.getElementById(urlId).value = '';
-    showMsg(msgId,'Link added.','ok');
+    showMsg(msgId,'Link added. Students will see a notification.','ok');
     await renderLibrary(libWrapId, true);
   }catch(e){
     showMsg(msgId, e.message, 'err');
@@ -1192,6 +1335,54 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str == null ? '' : str;
   return d.innerHTML;
+}
+
+function bellSuffix(){
+  if(!currentUser) return '_s';
+  if(currentUser.role === 'admin') return '_a';
+  if(currentUser.role === 'faculty') return '_f';
+  return '_s';
+}
+
+async function renderNotifications(){
+  const suffix = bellSuffix();
+  const badge = document.getElementById('bellBadge'+suffix);
+  try{
+    const { notifications, unreadCount } = await api('/api/notifications');
+    if(badge){
+      if(unreadCount > 0){
+        badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+        badge.style.display = 'flex';
+      }else{
+        badge.style.display = 'none';
+      }
+    }
+    const panel = document.getElementById('notifPanel'+suffix);
+    if(panel){
+      if(!notifications.length){
+        panel.innerHTML = '<div class="empty">No notifications yet.</div>';
+      }else{
+        panel.innerHTML = notifications.map(n =>
+          '<div class="notif-item"><div class="ni-title">New book: '+escapeHtml(n.bookTitle)+' by '+escapeHtml(n.author)+'</div>' +
+          '<div class="ni-meta">Uploaded by '+escapeHtml(n.uploadedByName)+' &middot; for '+escapeHtml(n.targetClass)+' &middot; '+formatDate(n.createdAt)+'</div></div>'
+        ).join('');
+      }
+    }
+  }catch(e){}
+}
+
+async function toggleNotifications(){
+  const suffix = bellSuffix();
+  const panel = document.getElementById('notifPanel'+suffix);
+  if(!panel) return;
+  panel.classList.toggle('show');
+  if(panel.classList.contains('show')){
+    try{
+      await api('/api/notifications/seen', { method:'POST' });
+      const badge = document.getElementById('bellBadge'+suffix);
+      if(badge) badge.style.display = 'none';
+    }catch(e){}
+  }
 }
 
 let chatHistory = [];
